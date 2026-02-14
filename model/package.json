@@ -1,0 +1,33 @@
+{
+  "name": "@hops/models",
+  "version": "1.0.0",
+  "description": "Sequelize models for HOPS hotel management system",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "clean": "rm -rf dist",
+    "sync": "tsx src/sync.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^25.1.0",
+    "dotenv": "^17.3.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "keywords": [
+    "sequelize",
+    "models",
+    "hotel",
+    "pms"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "mysql2": "^3.17.1",
+    "sequelize": "^6.37.1",
+    "sequelize-typescript": "^2.1.6"
+  }
+}

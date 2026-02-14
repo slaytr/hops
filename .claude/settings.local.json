@@ -25,7 +25,25 @@
       "Bash(npm run build:*)",
       "Bash(python -m json.tool:*)",
       "Bash(lsof:*)",
-      "Bash(npx vue-tsc:*)"
+      "Bash(npx vue-tsc:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker-compose ps:*)",
+      "Bash(docker-compose logs:*)",
+      "Bash(docker-compose down:*)",
+      "Bash(docker volume rm:*)",
+      "Bash(docker exec:*)",
+      "Bash(npm run seed:*)",
+      "Bash(npx tsx:*)",
+      "Bash(git checkout:*)",
+      "Skill(run)",
+      "Bash(ls -la \"C:\\\\Users\\\\Bill Li\\\\Documents\\\\Github\\\\hops\\\\frontend\\\\src\\\\components\"\" | grep -E \"MainApp)",
+      "Bash(Login)",
+      "Bash(ControlRoom \")",
+      "Bash(git restore:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(pkill:*)",
+      "Bash(taskkill:*)",
+      "Bash(xargs kill:*)"
     ]
   }
 }
