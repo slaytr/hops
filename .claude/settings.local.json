@@ -21,7 +21,11 @@
       "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force\")",
       "Bash(npx vite --version)",
       "Bash(node -e:*)",
-      "Bash(powershell -Command:*)"
+      "Bash(powershell -Command:*)",
+      "Bash(npm run build:*)",
+      "Bash(python -m json.tool:*)",
+      "Bash(lsof:*)",
+      "Bash(npx vue-tsc:*)"
     ]
   }
 }

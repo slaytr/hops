@@ -10,6 +10,8 @@ interface HousekeepingTask {
   assignedUserId: string
   assignedUserName?: string
   taskDate: string
+  startDateTime?: string
+  endDateTime?: string
   taskType: 'cleaning' | 'maintenance' | 'inspection' | 'turndown'
   priority: 'low' | 'medium' | 'high' | 'urgent'
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
@@ -37,6 +39,10 @@ interface TaskForm {
   roomId: string
   assignedUserId: string
   taskDate: string
+  startDate?: string
+  endDate?: string
+  startTime?: string
+  endTime?: string
   taskType: 'cleaning' | 'maintenance' | 'inspection' | 'turndown'
   priority: 'low' | 'medium' | 'high' | 'urgent'
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
@@ -53,11 +59,16 @@ const editingTask = ref<HousekeepingTask | null>(null)
 const dateFilter = ref<string>('')
 const statusFilter = ref<string>('all')
 const userFilter = ref<string>('all')
+const isMultiDay = ref(false)
 
 const formData = ref<TaskForm>({
   roomId: '',
   assignedUserId: '',
   taskDate: new Date().toISOString().split('T')[0],
+  startDate: new Date().toISOString().split('T')[0],
+  endDate: new Date().toISOString().split('T')[0],
+  startTime: '09:00',
+  endTime: '17:00',
   taskType: 'cleaning',
   priority: 'medium',
   status: 'pending',
@@ -111,18 +122,33 @@ const resetForm = () => {
     roomId: '',
     assignedUserId: '',
     taskDate: new Date().toISOString().split('T')[0],
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0],
+    startTime: '09:00',
+    endTime: '17:00',
     taskType: 'cleaning',
     priority: 'medium',
     status: 'pending',
     notes: ''
   }
+  isMultiDay.value = false
   editingTask.value = null
   error.value = ''
 }
 
 const addTask = async () => {
-  if (!formData.value.roomId || !formData.value.assignedUserId || !formData.value.taskDate) {
-    error.value = 'Room, assigned user, and task date are required'
+  if (!formData.value.roomId || !formData.value.assignedUserId) {
+    error.value = 'Room and assigned user are required'
+    return
+  }
+
+  if (!isMultiDay.value && !formData.value.taskDate) {
+    error.value = 'Task date is required'
+    return
+  }
+
+  if (isMultiDay.value && (!formData.value.startDate || !formData.value.endDate)) {
+    error.value = 'Start and end dates are required for multi-day tasks'
     return
   }
 
@@ -130,10 +156,29 @@ const addTask = async () => {
   error.value = ''
 
   try {
+    // Build request body based on single-day or multi-day mode
+    const requestBody: any = {
+      roomId: formData.value.roomId,
+      assignedUserId: formData.value.assignedUserId,
+      taskType: formData.value.taskType,
+      priority: formData.value.priority,
+      status: formData.value.status,
+      notes: formData.value.notes
+    }
+
+    if (isMultiDay.value) {
+      // Multi-day task: send startDateTime and endDateTime
+      requestBody.startDateTime = `${formData.value.startDate}T${formData.value.startTime || '09:00'}:00Z`
+      requestBody.endDateTime = `${formData.value.endDate}T${formData.value.endTime || '17:00'}:00Z`
+    } else {
+      // Single-day task: send taskDate (legacy format)
+      requestBody.taskDate = formData.value.taskDate
+    }
+
     const response = await fetch(`${API_URL}/housekeeping-tasks`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData.value)
+      body: JSON.stringify(requestBody)
     })
 
     const data = await response.json()
@@ -153,14 +198,46 @@ const addTask = async () => {
 
 const startEdit = (task: HousekeepingTask) => {
   editingTask.value = task
-  formData.value = {
-    roomId: task.roomId,
-    assignedUserId: task.assignedUserId,
-    taskDate: task.taskDate,
-    taskType: task.taskType,
-    priority: task.priority,
-    status: task.status,
-    notes: task.notes || ''
+
+  // Check if this is a multi-day task
+  const isMulti = isTaskMultiDay(task)
+  isMultiDay.value = isMulti
+
+  if (isMulti && task.startDateTime && task.endDateTime) {
+    // Parse multi-day task date/times
+    const startDate = task.startDateTime.split('T')[0]
+    const endDate = task.endDateTime.split('T')[0]
+    const startTime = task.startDateTime.split('T')[1]?.substring(0, 5) || '09:00'
+    const endTime = task.endDateTime.split('T')[1]?.substring(0, 5) || '17:00'
+
+    formData.value = {
+      roomId: task.roomId,
+      assignedUserId: task.assignedUserId,
+      taskDate: task.taskDate,
+      startDate: startDate,
+      endDate: endDate,
+      startTime: startTime,
+      endTime: endTime,
+      taskType: task.taskType,
+      priority: task.priority,
+      status: task.status,
+      notes: task.notes || ''
+    }
+  } else {
+    // Single-day task (legacy format)
+    formData.value = {
+      roomId: task.roomId,
+      assignedUserId: task.assignedUserId,
+      taskDate: task.taskDate,
+      startDate: task.taskDate,
+      endDate: task.taskDate,
+      startTime: '09:00',
+      endTime: '17:00',
+      taskType: task.taskType,
+      priority: task.priority,
+      status: task.status,
+      notes: task.notes || ''
+    }
   }
 }
 
@@ -171,10 +248,29 @@ const updateTask = async () => {
   error.value = ''
 
   try {
+    // Build request body based on single-day or multi-day mode
+    const requestBody: any = {
+      roomId: formData.value.roomId,
+      assignedUserId: formData.value.assignedUserId,
+      taskType: formData.value.taskType,
+      priority: formData.value.priority,
+      status: formData.value.status,
+      notes: formData.value.notes
+    }
+
+    if (isMultiDay.value) {
+      // Multi-day task: send startDateTime and endDateTime
+      requestBody.startDateTime = `${formData.value.startDate}T${formData.value.startTime || '09:00'}:00Z`
+      requestBody.endDateTime = `${formData.value.endDate}T${formData.value.endTime || '17:00'}:00Z`
+    } else {
+      // Single-day task: send taskDate (legacy format)
+      requestBody.taskDate = formData.value.taskDate
+    }
+
     const response = await fetch(`${API_URL}/housekeeping-tasks/${editingTask.value.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData.value)
+      body: JSON.stringify(requestBody)
     })
 
     const data = await response.json()
@@ -303,6 +399,29 @@ const formatDateOnly = (dateString: string) => {
   return new Date(dateString).toLocaleDateString()
 }
 
+const isTaskMultiDay = (task: HousekeepingTask): boolean => {
+  if (!task.startDateTime || !task.endDateTime) return false
+  const startDate = task.startDateTime.split('T')[0]
+  const endDate = task.endDateTime.split('T')[0]
+  return startDate !== endDate
+}
+
+const formatTaskDateRange = (task: HousekeepingTask): string => {
+  if (!isTaskMultiDay(task)) {
+    return formatDateOnly(task.taskDate)
+  }
+
+  const start = new Date(task.startDateTime!)
+  const end = new Date(task.endDateTime!)
+
+  const startStr = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const endStr = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+
+  const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+
+  return `${startStr} - ${endStr} (${days} days)`
+}
+
 onMounted(async () => {
   await Promise.all([fetchTasks(), fetchRooms(), fetchUsers()])
 })
@@ -338,7 +457,18 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div class="form-row">
+        <div class="form-group">
+          <label class="toggle-label">
+            <input
+              type="checkbox"
+              v-model="isMultiDay"
+              :disabled="loading"
+            />
+            <span class="toggle-text">Multi-day task (spans multiple days)</span>
+          </label>
+        </div>
+
+        <div v-if="!isMultiDay" class="form-row">
           <div class="form-group">
             <label for="taskDate">Task Date *</label>
             <input
@@ -358,6 +488,72 @@ onMounted(async () => {
               <option value="inspection">Inspection</option>
               <option value="turndown">Turndown</option>
             </select>
+          </div>
+        </div>
+
+        <div v-if="isMultiDay">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="startDate">Start Date *</label>
+              <input
+                id="startDate"
+                v-model="formData.startDate"
+                type="date"
+                :disabled="loading"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="startTime">Start Time *</label>
+              <input
+                id="startTime"
+                v-model="formData.startTime"
+                type="time"
+                :disabled="loading"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="endDate">End Date *</label>
+              <input
+                id="endDate"
+                v-model="formData.endDate"
+                type="date"
+                :disabled="loading"
+                :min="formData.startDate"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="endTime">End Time *</label>
+              <input
+                id="endTime"
+                v-model="formData.endTime"
+                type="time"
+                :disabled="loading"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="taskType">Task Type *</label>
+              <select id="taskType" v-model="formData.taskType" :disabled="loading" required>
+                <option value="cleaning">Cleaning</option>
+                <option value="maintenance">Maintenance</option>
+                <option value="inspection">Inspection</option>
+                <option value="turndown">Turndown</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <!-- Spacer for layout -->
+            </div>
           </div>
         </div>
 
@@ -453,7 +649,10 @@ onMounted(async () => {
             <tr v-for="task in tasks" :key="task.id">
               <td><strong>{{ task.roomNumber || '-' }}</strong></td>
               <td>{{ task.assignedUserName || '-' }}</td>
-              <td>{{ formatDateOnly(task.taskDate) }}</td>
+              <td>
+                {{ formatTaskDateRange(task) }}
+                <span v-if="isTaskMultiDay(task)" class="multi-day-badge">📅</span>
+              </td>
               <td>
                 <span class="badge" :class="getTypeBadgeClass(task.taskType)">
                   {{ task.taskType }}
@@ -558,6 +757,34 @@ label {
   margin-bottom: 0.5rem;
   font-weight: 500;
   color: var(--color-heading);
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.toggle-label:hover {
+  background: var(--color-background-soft);
+}
+
+.toggle-label input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+  cursor: pointer;
+}
+
+.toggle-text {
+  font-weight: 500;
+  color: var(--color-text);
 }
 
 input,
@@ -695,6 +922,11 @@ button:disabled {
   font-size: 0.875rem;
   font-weight: 500;
   text-transform: capitalize;
+}
+
+.multi-day-badge {
+  margin-left: 0.5rem;
+  font-size: 1rem;
 }
 
 .badge-pending {

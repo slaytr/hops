@@ -50,7 +50,9 @@ interface HousekeepingTask {
   roomNumber?: string;
   assignedUserId: string;
   assignedUserName?: string;
-  taskDate: string;
+  taskDate: string; // Keep for backward compatibility
+  startDateTime?: string; // ISO 8601 datetime
+  endDateTime?: string; // ISO 8601 datetime
   taskType: 'cleaning' | 'maintenance' | 'inspection' | 'turndown';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
@@ -522,16 +524,29 @@ fastify.delete<{ Params: { id: string } }>("/rooms/:id", async (request, reply) 
 // ==================== HOUSEKEEPING TASKS ====================
 
 // Get all housekeeping tasks with optional filters
-fastify.get<{ Querystring: { date?: string; status?: string; userId?: string } }>("/housekeeping-tasks", async (request) => {
+fastify.get<{ Querystring: { date?: string; startDate?: string; endDate?: string; status?: string; userId?: string } }>("/housekeeping-tasks", async (request) => {
   let tasks = cache.get<HousekeepingTask[]>(HOUSEKEEPING_TASKS_KEY) || [];
   const rooms = cache.get<Room[]>(ROOMS_KEY) || [];
   const users = cache.get<User[]>(USERS_KEY) || [];
 
   // Apply filters
-  const { date, status, userId } = request.query;
+  const { date, startDate, endDate, status, userId } = request.query;
 
   if (date) {
+    // Legacy single-date filter
     tasks = tasks.filter(t => t.taskDate === date);
+  } else if (startDate && endDate) {
+    // Date range filter: return tasks that overlap with the range
+    // Task overlaps if: task.startDateTime <= rangeEnd AND task.endDateTime >= rangeStart
+    const rangeStart = new Date(startDate + 'T00:00:00Z');
+    const rangeEnd = new Date(endDate + 'T23:59:59Z');
+
+    tasks = tasks.filter(t => {
+      const taskStart = t.startDateTime ? new Date(t.startDateTime) : new Date(t.taskDate + 'T00:00:00Z');
+      const taskEnd = t.endDateTime ? new Date(t.endDateTime) : new Date(t.taskDate + 'T23:59:59Z');
+
+      return taskStart <= rangeEnd && taskEnd >= rangeStart;
+    });
   }
 
   if (status) {
@@ -582,11 +597,16 @@ fastify.get<{ Params: { id: string } }>("/housekeeping-tasks/:id", async (reques
 
 // Create new housekeeping task
 fastify.post<{ Body: Omit<HousekeepingTask, 'id' | 'createdAt' | 'updatedAt' | 'roomNumber' | 'assignedUserName' | 'startedAt' | 'completedAt'> }>("/housekeeping-tasks", async (request, reply) => {
-  const { roomId, assignedUserId, taskDate, taskType, priority, status, notes } = request.body;
+  const { roomId, assignedUserId, taskDate, startDateTime, endDateTime, taskType, priority, status, notes } = request.body;
 
   // Validation
-  if (!roomId || !assignedUserId || !taskDate) {
-    return reply.status(400).send({ error: "Room, assigned user, and task date are required" });
+  if (!roomId || !assignedUserId) {
+    return reply.status(400).send({ error: "Room and assigned user are required" });
+  }
+
+  // Require either taskDate (legacy) or startDateTime+endDateTime
+  if (!taskDate && !startDateTime) {
+    return reply.status(400).send({ error: "Either taskDate or startDateTime is required" });
   }
 
   // Validate roomId exists
@@ -605,18 +625,43 @@ fastify.post<{ Body: Omit<HousekeepingTask, 'id' | 'createdAt' | 'updatedAt' | '
     return reply.status(400).send({ error: "Only staff members can be assigned to housekeeping tasks" });
   }
 
-  const tasks = cache.get<HousekeepingTask[]>(HOUSEKEEPING_TASKS_KEY) || [];
+  // Process date/time fields for backward compatibility
+  let finalTaskDate: string;
+  let finalStartDateTime: string | undefined;
+  let finalEndDateTime: string | undefined;
 
-  // Check unique constraint: room + date + type
-  if (tasks.some(t => t.roomId === roomId && t.taskDate === taskDate && t.taskType === (taskType || 'cleaning'))) {
-    return reply.status(400).send({ error: "A task of this type already exists for this room on this date" });
+  if (startDateTime || endDateTime) {
+    // New format provided - use provided values or derive from the other
+    const start = startDateTime || endDateTime!;
+    const end = endDateTime || startDateTime!;
+
+    finalStartDateTime = start.includes('T') ? start : `${start}T12:00:00Z`;
+    finalEndDateTime = end.includes('T') ? end : `${end}T23:59:59Z`;
+    finalTaskDate = finalStartDateTime.split('T')[0];
+
+    // Validate end >= start
+    if (new Date(finalEndDateTime) < new Date(finalStartDateTime)) {
+      return reply.status(400).send({ error: "End date/time must be after start date/time" });
+    }
+  } else if (taskDate) {
+    // Legacy format - convert to new format
+    finalTaskDate = taskDate;
+    finalStartDateTime = `${taskDate}T12:00:00Z`;
+    finalEndDateTime = `${taskDate}T23:59:59Z`;
+  } else {
+    // This should never happen due to validation above, but TypeScript needs it
+    return reply.status(400).send({ error: "Either taskDate or startDateTime/endDateTime is required" });
   }
+
+  const tasks = cache.get<HousekeepingTask[]>(HOUSEKEEPING_TASKS_KEY) || [];
 
   const newTask: HousekeepingTask = {
     id: Date.now().toString(),
     roomId,
     assignedUserId,
-    taskDate,
+    taskDate: finalTaskDate,
+    startDateTime: finalStartDateTime,
+    endDateTime: finalEndDateTime,
     taskType: taskType || 'cleaning',
     priority: priority || 'medium',
     status: status || 'pending',
@@ -650,7 +695,7 @@ fastify.put<{ Params: { id: string }, Body: Partial<Omit<HousekeepingTask, 'id' 
     return reply.status(404).send({ error: "Housekeeping task not found" });
   }
 
-  const { roomId, assignedUserId, taskDate, taskType, priority, status, notes, startedAt, completedAt } = request.body;
+  const { roomId, assignedUserId, taskDate, startDateTime, endDateTime, taskType, priority, status, notes, startedAt, completedAt } = request.body;
 
   // Validate roomId if provided
   if (roomId) {
@@ -672,13 +717,31 @@ fastify.put<{ Params: { id: string }, Body: Partial<Omit<HousekeepingTask, 'id' 
     }
   }
 
-  // Check unique constraint if relevant fields are being updated
-  const updatedRoomId = roomId || tasks[taskIndex].roomId;
-  const updatedTaskDate = taskDate || tasks[taskIndex].taskDate;
-  const updatedTaskType = taskType || tasks[taskIndex].taskType;
+  // Process date/time fields for backward compatibility
+  let finalTaskDate: string | undefined;
+  let finalStartDateTime: string | undefined;
+  let finalEndDateTime: string | undefined;
 
-  if (tasks.some((t, idx) => idx !== taskIndex && t.roomId === updatedRoomId && t.taskDate === updatedTaskDate && t.taskType === updatedTaskType)) {
-    return reply.status(400).send({ error: "A task of this type already exists for this room on this date" });
+  if (startDateTime !== undefined || endDateTime !== undefined) {
+    // If either is provided, process both
+    const newStart = startDateTime || tasks[taskIndex].startDateTime;
+    const newEnd = endDateTime || tasks[taskIndex].endDateTime;
+
+    if (newStart && newEnd) {
+      finalStartDateTime = newStart.includes('T') ? newStart : `${newStart}T12:00:00Z`;
+      finalEndDateTime = newEnd.includes('T') ? newEnd : `${newEnd}T12:00:00Z`;
+      finalTaskDate = finalStartDateTime.split('T')[0];
+
+      // Validate end >= start
+      if (new Date(finalEndDateTime) < new Date(finalStartDateTime)) {
+        return reply.status(400).send({ error: "End date/time must be after start date/time" });
+      }
+    }
+  } else if (taskDate !== undefined) {
+    // Legacy format - convert to new format
+    finalTaskDate = taskDate;
+    finalStartDateTime = `${taskDate}T12:00:00Z`;
+    finalEndDateTime = `${taskDate}T23:59:59Z`;
   }
 
   // Handle status transitions
@@ -697,7 +760,9 @@ fastify.put<{ Params: { id: string }, Body: Partial<Omit<HousekeepingTask, 'id' 
     ...tasks[taskIndex],
     ...(roomId && { roomId }),
     ...(assignedUserId && { assignedUserId }),
-    ...(taskDate && { taskDate }),
+    ...(finalTaskDate && { taskDate: finalTaskDate }),
+    ...(finalStartDateTime && { startDateTime: finalStartDateTime }),
+    ...(finalEndDateTime && { endDateTime: finalEndDateTime }),
     ...(taskType && { taskType }),
     ...(priority && { priority }),
     ...(status && { status }),

@@ -4,9 +4,9 @@ import UserManager from './components/UserManager.vue'
 import RoomTypeManager from './components/RoomTypeManager.vue'
 import RoomManager from './components/RoomManager.vue'
 import HousekeepingTaskManager from './components/HousekeepingTaskManager.vue'
-import CalendarView from './components/CalendarView.vue'
+import ControlRoom from './components/ControlRoom.vue'
 
-const activeTab = ref<'calendar' | 'settings'>('calendar')
+const activeTab = ref<'controlroom' | 'settings'>('controlroom')
 const activeSettingsView = ref<'housekeeping' | 'rooms' | 'roomTypes' | 'users'>('housekeeping')
 
 // Tab indicator animation
@@ -26,7 +26,7 @@ const updateTabIndicator = async () => {
   }
 }
 
-const setActiveTab = (tab: 'calendar' | 'settings') => {
+const setActiveTab = (tab: 'controlroom' | 'settings') => {
   activeTab.value = tab
   updateTabIndicator()
 }
@@ -42,7 +42,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
   switch (event.key) {
     case 'ArrowLeft':
       event.preventDefault()
-      setActiveTab('calendar')
+      setActiveTab('controlroom')
       break
     case 'ArrowRight':
       event.preventDefault()
@@ -51,7 +51,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
     case 'Backspace':
       event.preventDefault()
       // Toggle between tabs
-      setActiveTab(activeTab.value === 'calendar' ? 'settings' : 'calendar')
+      setActiveTab(activeTab.value === 'controlroom' ? 'settings' : 'controlroom')
       break
   }
 }
@@ -109,8 +109,8 @@ onUnmounted(() => {
     <header>
       <h1>hops</h1>
       <nav class="tabs">
-        <button @click="setActiveTab('calendar')" :class="{ active: activeTab === 'calendar' }">
-          <i class="codicon codicon-calendar"></i> Calendar
+        <button @click="setActiveTab('controlroom')" :class="{ active: activeTab === 'controlroom' }">
+          <i class="codicon codicon-calendar"></i> Operations Hub
         </button>
         <button @click="setActiveTab('settings')" :class="{ active: activeTab === 'settings' }">
           <i class="codicon codicon-settings-gear"></i> Settings
@@ -139,7 +139,7 @@ onUnmounted(() => {
     </nav>
 
     <main>
-      <CalendarView v-if="activeTab === 'calendar'" />
+      <ControlRoom v-if="activeTab === 'controlroom'" />
       <HousekeepingTaskManager v-else-if="activeTab === 'settings' && activeSettingsView === 'housekeeping'" />
       <RoomManager v-else-if="activeTab === 'settings' && activeSettingsView === 'rooms'" />
       <RoomTypeManager v-else-if="activeTab === 'settings' && activeSettingsView === 'roomTypes'" />
