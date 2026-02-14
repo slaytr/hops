@@ -18,40 +18,46 @@ export class Task extends Model {
   @Column({
     type: DataType.INTEGER,
     allowNull: false,
+    field: 'room_id',
   })
-  declare room_id: number;
+  declare roomId: number;
 
   @ForeignKey(() => Staff)
   @Column({
     type: DataType.INTEGER,
     allowNull: false,
+    field: 'assigned_staff_id',
   })
-  declare assigned_staff_id: number;
+  declare assignedStaffId: number;
 
   @Column({
     type: DataType.DATEONLY,
     allowNull: false,
+    field: 'task_date',
   })
-  declare task_date: Date;
+  declare taskDate: Date;
 
   @Column({
     type: DataType.DATE,
     allowNull: true,
+    field: 'start_date_time',
   })
-  declare start_date_time: Date | null;
+  declare startDateTime: Date | null;
 
   @Column({
     type: DataType.DATE,
     allowNull: true,
+    field: 'end_date_time',
   })
-  declare end_date_time: Date | null;
+  declare endDateTime: Date | null;
 
   @Column({
     type: DataType.ENUM('cleaning', 'maintenance', 'inspection', 'turndown'),
     allowNull: false,
     defaultValue: 'cleaning',
+    field: 'task_type',
   })
-  declare task_type: 'cleaning' | 'maintenance' | 'inspection' | 'turndown';
+  declare taskType: 'cleaning' | 'maintenance' | 'inspection' | 'turndown';
 
   @Column({
     type: DataType.ENUM('low', 'medium', 'high', 'urgent'),
@@ -76,33 +82,35 @@ export class Task extends Model {
   @Column({
     type: DataType.DATE,
     allowNull: true,
+    field: 'started_at',
   })
-  declare started_at: Date | null;
+  declare startedAt: Date | null;
 
   @Column({
     type: DataType.DATE,
     allowNull: true,
+    field: 'completed_at',
   })
-  declare completed_at: Date | null;
+  declare completedAt: Date | null;
 
   @Column({
     type: DataType.DATE,
     allowNull: false,
     field: 'created_at',
   })
-  declare created_at: Date;
+  declare createdAt: Date;
 
   @Column({
     type: DataType.DATE,
     allowNull: false,
     field: 'updated_at',
   })
-  declare updated_at: Date;
+  declare updatedAt: Date;
 
   // Associations
   @BelongsTo(() => Room, 'room_id')
   declare room?: Room;
 
   @BelongsTo(() => Staff, 'assigned_staff_id')
-  declare assigned_staff?: Staff;
+  declare assignedStaff?: Staff;
 }

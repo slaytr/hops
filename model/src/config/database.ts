@@ -1,9 +1,14 @@
 import { Sequelize } from 'sequelize-typescript';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { User } from '../models/User.js';
+import { Staff } from '../models/Staff.js';
+import { RoomType } from '../models/RoomType.js';
+import { Room } from '../models/Room.js';
+import { Task } from '../models/Task.js';
+import { Guest } from '../models/Guest.js';
+import { RatePlan } from '../models/RatePlan.js';
+import { RoomRate } from '../models/RoomRate.js';
+import { Reservation } from '../models/Reservation.js';
+import { RoomOccupancy } from '../models/RoomOccupancy.js';
 
 export interface DatabaseConfig {
   host: string;
@@ -18,7 +23,18 @@ export interface DatabaseConfig {
 export function createSequelizeInstance(config: DatabaseConfig): Sequelize {
   const sequelize = new Sequelize({
     ...config,
-    models: [join(__dirname, '..', 'models')],
+    models: [
+      User,
+      Staff,
+      Guest,
+      RoomType,
+      Room,
+      Task,
+      RatePlan,
+      RoomRate,
+      Reservation,
+      RoomOccupancy,
+    ],
     pool: {
       max: 10,
       min: 0,

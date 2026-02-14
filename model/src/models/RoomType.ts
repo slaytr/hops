@@ -31,15 +31,17 @@ export class RoomType extends Model {
   @Column({
     type: DataType.DECIMAL(10, 2),
     allowNull: false,
+    field: 'base_rate',
   })
-  declare base_rate: number;
+  declare baseRate: number;
 
   @Column({
     type: DataType.INTEGER,
     allowNull: false,
     defaultValue: 1,
+    field: 'max_occupancy',
   })
-  declare max_occupancy: number;
+  declare maxOccupancy: number;
 
   @Column({
     type: DataType.JSON,
@@ -59,21 +61,21 @@ export class RoomType extends Model {
     allowNull: false,
     field: 'created_at',
   })
-  declare created_at: Date;
+  declare createdAt: Date;
 
   @Column({
     type: DataType.DATE,
     allowNull: false,
     field: 'updated_at',
   })
-  declare updated_at: Date;
+  declare updatedAt: Date;
 
   // Associations
   @HasMany(() => Room, 'room_type_id')
   declare rooms?: Room[];
 
   @HasMany(() => RoomRate, 'room_type_id')
-  declare room_rates?: RoomRate[];
+  declare roomRates?: RoomRate[];
 
   @HasMany(() => Reservation, 'room_type_id')
   declare reservations?: Reservation[];

@@ -37,86 +37,96 @@ export class RatePlan extends Model {
     type: DataType.ENUM('standard', 'promotional', 'corporate', 'seasonal', 'package'),
     allowNull: false,
     defaultValue: 'standard',
+    field: 'plan_type',
   })
-  declare plan_type: 'standard' | 'promotional' | 'corporate' | 'seasonal' | 'package';
+  declare planType: 'standard' | 'promotional' | 'corporate' | 'seasonal' | 'package';
 
   @Column({
     type: DataType.ENUM('flexible', 'moderate', 'strict', 'non_refundable'),
     allowNull: false,
     defaultValue: 'flexible',
+    field: 'cancellation_policy',
   })
-  declare cancellation_policy: 'flexible' | 'moderate' | 'strict' | 'non_refundable';
+  declare cancellationPolicy: 'flexible' | 'moderate' | 'strict' | 'non_refundable';
 
   @Column({
     type: DataType.INTEGER,
     allowNull: false,
     defaultValue: 1,
+    field: 'min_nights',
   })
-  declare min_nights: number;
+  declare minNights: number;
 
   @Column({
     type: DataType.INTEGER,
     allowNull: true,
+    field: 'max_nights',
   })
-  declare max_nights: number | null;
+  declare maxNights: number | null;
 
   @Column({
     type: DataType.INTEGER,
     allowNull: false,
     defaultValue: 0,
+    field: 'advance_booking_required',
   })
-  declare advance_booking_required: number;
+  declare advanceBookingRequired: number;
 
   @Column({
     type: DataType.DECIMAL(5, 2),
     allowNull: false,
     defaultValue: 0.00,
+    field: 'deposit_percentage',
   })
-  declare deposit_percentage: number;
+  declare depositPercentage: number;
 
   @Column({
     type: DataType.BOOLEAN,
     allowNull: false,
     defaultValue: false,
+    field: 'deposit_required',
   })
-  declare deposit_required: boolean;
+  declare depositRequired: boolean;
 
   @Column({
     type: DataType.DATEONLY,
     allowNull: true,
+    field: 'valid_from',
   })
-  declare valid_from: Date | null;
+  declare validFrom: Date | null;
 
   @Column({
     type: DataType.DATEONLY,
     allowNull: true,
+    field: 'valid_to',
   })
-  declare valid_to: Date | null;
+  declare validTo: Date | null;
 
   @Column({
     type: DataType.BOOLEAN,
     allowNull: false,
     defaultValue: true,
+    field: 'is_active',
   })
-  declare is_active: boolean;
+  declare isActive: boolean;
 
   @Column({
     type: DataType.DATE,
     allowNull: false,
     field: 'created_at',
   })
-  declare created_at: Date;
+  declare createdAt: Date;
 
   @Column({
     type: DataType.DATE,
     allowNull: false,
     field: 'updated_at',
   })
-  declare updated_at: Date;
+  declare updatedAt: Date;
 
   // Associations
   @HasMany(() => RoomRate, 'rate_plan_id')
-  declare room_rates?: RoomRate[];
+  declare roomRates?: RoomRate[];
 
   @HasMany(() => Reservation, 'rate_plan_id')
   declare reservations?: Reservation[];

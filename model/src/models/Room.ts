@@ -20,15 +20,17 @@ export class Room extends Model {
     type: DataType.STRING(20),
     allowNull: false,
     unique: true,
+    field: 'room_number',
   })
-  declare room_number: string;
+  declare roomNumber: string;
 
   @ForeignKey(() => RoomType)
   @Column({
     type: DataType.INTEGER,
     allowNull: false,
+    field: 'room_type_id',
   })
-  declare room_type_id: number;
+  declare roomTypeId: number;
 
   @Column({
     type: DataType.INTEGER,
@@ -54,18 +56,18 @@ export class Room extends Model {
     allowNull: false,
     field: 'created_at',
   })
-  declare created_at: Date;
+  declare createdAt: Date;
 
   @Column({
     type: DataType.DATE,
     allowNull: false,
     field: 'updated_at',
   })
-  declare updated_at: Date;
+  declare updatedAt: Date;
 
   // Associations
   @BelongsTo(() => RoomType, 'room_type_id')
-  declare room_type?: RoomType;
+  declare roomType?: RoomType;
 
   @HasMany(() => Task, 'room_id')
   declare tasks?: Task[];

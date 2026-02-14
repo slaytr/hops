@@ -23,7 +23,10 @@ interface HousekeepingTask {
 interface Room {
   id: string
   roomNumber: string
-  roomTypeName?: string
+  roomTypeId: string
+  roomType?: {
+    name: string
+  }
   floor?: number
   status: string
 }
@@ -51,6 +54,15 @@ const pendingMove = ref<{
   task: HousekeepingTask
   fromDate: string
   toDate: string
+  newStartDateTime: string
+  newEndDateTime: string
+} | null>(null)
+
+// Resize state
+const resizingTask = ref<HousekeepingTask | null>(null)
+const resizeEdge = ref<'start' | 'end' | null>(null)
+const resizePreview = ref<{
+  task: HousekeepingTask
   newStartDateTime: string
   newEndDateTime: string
 } | null>(null)
@@ -152,7 +164,7 @@ const fetchTasks = async () => {
     const rangeEnd = formatDateISO(dates.value[dates.value.length - 1])
 
     const response = await fetch(
-      `${API_URL}/housekeeping-tasks?startDate=${rangeStart}&endDate=${rangeEnd}`
+      `${API_URL}/tasks?startDate=${rangeStart}&endDate=${rangeEnd}`
     )
     const data = await response.json()
     tasks.value = data.tasks
@@ -400,6 +412,9 @@ const updateContainerWidth = () => {
 
 // Drag and drop handlers
 const handleDragStart = (task: HousekeepingTask, date: Date) => {
+  // Don't allow dragging while confirming a move
+  if (pendingMove.value) return
+
   draggedTask.value = task
   draggedFromDate.value = formatDateISO(date)
 }
@@ -468,7 +483,7 @@ const confirmMove = async () => {
   error.value = ''
 
   try {
-    const response = await fetch(`${API_URL}/housekeeping-tasks/${pendingMove.value.task.id}`, {
+    const response = await fetch(`${API_URL}/tasks/${pendingMove.value.task.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -498,8 +513,145 @@ const cancelMove = () => {
   pendingMove.value = null
 }
 
+// Resize handlers
+const handleResizeStart = (event: MouseEvent, task: HousekeepingTask, edge: 'start' | 'end') => {
+  event.stopPropagation()
+  event.preventDefault()
+
+  resizingTask.value = task
+  resizeEdge.value = edge
+
+  // Disable task dragging while resizing
+  const target = event.target as HTMLElement
+  const taskBlock = target.closest('.task-block') as HTMLElement
+  if (taskBlock) {
+    taskBlock.setAttribute('draggable', 'false')
+  }
+}
+
+const handleResizeMove = (event: MouseEvent, date: Date) => {
+  if (!resizingTask.value || !resizeEdge.value) return
+
+  const newDateStr = formatDateISO(date)
+  const task = resizingTask.value
+
+  const currentStart = task.startDateTime || `${task.taskDate}T12:00:00`
+  const currentEnd = task.endDateTime || `${task.taskDate}T23:59:59`
+
+  let newStart = currentStart
+  let newEnd = currentEnd
+
+  if (resizeEdge.value === 'start') {
+    // Resizing from the start (left edge)
+    newStart = new Date(newDateStr + 'T12:00:00').toISOString()
+    // Don't allow start to be after end
+    if (new Date(newStart) >= new Date(currentEnd)) {
+      return
+    }
+  } else {
+    // Resizing from the end (right edge)
+    newEnd = new Date(newDateStr + 'T23:59:59').toISOString()
+    // Don't allow end to be before start
+    if (new Date(newEnd) <= new Date(currentStart)) {
+      return
+    }
+  }
+
+  resizePreview.value = {
+    task,
+    newStartDateTime: newStart,
+    newEndDateTime: newEnd
+  }
+}
+
+const handleResizeEnd = async () => {
+  if (!resizingTask.value || !resizePreview.value) {
+    resizingTask.value = null
+    resizeEdge.value = null
+    resizePreview.value = null
+    return
+  }
+
+  loading.value = true
+  error.value = ''
+
+  try {
+    const response = await fetch(`${API_URL}/tasks/${resizingTask.value.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        startDateTime: resizePreview.value.newStartDateTime,
+        endDateTime: resizePreview.value.newEndDateTime,
+        taskDate: new Date(resizePreview.value.newStartDateTime).toISOString().split('T')[0]
+      })
+    })
+
+    if (response.ok) {
+      await fetchTasks()
+    } else {
+      const data = await response.json()
+      error.value = data.error || 'Failed to resize task'
+    }
+  } catch (e) {
+    error.value = 'Failed to resize task'
+  } finally {
+    loading.value = false
+    resizingTask.value = null
+    resizeEdge.value = null
+    resizePreview.value = null
+  }
+}
+
+const cancelResize = () => {
+  resizingTask.value = null
+  resizeEdge.value = null
+  resizePreview.value = null
+}
+
+const getResizePreviewWidth = (preview: typeof resizePreview.value) => {
+  if (!preview) return DATE_COLUMN_WIDTH
+
+  const start = new Date(preview.newStartDateTime)
+  const end = new Date(preview.newEndDateTime)
+  const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+
+  return Math.max(1, daysDiff) * DATE_COLUMN_WIDTH
+}
+
+const getConfirmButtonsPosition = () => {
+  if (!pendingMove.value) return {}
+
+  // Find the cell where the task was dropped
+  const toDateStr = formatDateISO(new Date(pendingMove.value.toDate))
+  const roomId = pendingMove.value.task.roomId
+
+  // Calculate position based on room index and date index
+  const roomIndex = filteredRooms.value.findIndex(r => r.id === roomId)
+  const dateIndex = dates.value.findIndex(d => formatDateISO(d) === toDateStr)
+
+  if (roomIndex === -1 || dateIndex === -1) return {}
+
+  // Calculate position more accurately
+  // Header height is 4rem = 64px, row height is 3rem = 48px
+  const headerHeight = 64 // 4rem
+  const rowHeight = 48 // 3rem
+  const top = headerHeight + (roomIndex * rowHeight) + rowHeight + 5 // header + rows before + current row + small padding
+
+  // Account for buffer offset if dragging
+  const bufferOffset = isDraggingHeader.value || isScrolling.value ? -(BUFFER_DAYS * DATE_COLUMN_WIDTH) : 0
+  const left = ROOM_COLUMN_WIDTH + (dateIndex * DATE_COLUMN_WIDTH) + bufferOffset + 5
+
+  return {
+    top: `${top}px`,
+    left: `${left}px`
+  }
+}
+
 // Header drag handlers
 const handleHeaderMouseDown = (event: MouseEvent) => {
+  // Don't allow dragging while confirming a move
+  if (pendingMove.value) return
+
   isDraggingHeader.value = true
   dragStartX.value = event.clientX
   dragTranslateX.value = 0
@@ -545,6 +697,9 @@ const handleHeaderMouseUp = () => {
 const handleWheel = (event: WheelEvent) => {
   event.preventDefault()
 
+  // Don't allow scrolling while confirming a move
+  if (pendingMove.value) return
+
   // Each scroll action moves exactly one day
   // Positive deltaY = scroll down = go forward in time (next day)
   // Negative deltaY = scroll up = go backward in time (previous day)
@@ -568,15 +723,17 @@ onMounted(async () => {
   // Update on window resize
   window.addEventListener('resize', updateContainerWidth)
 
-  // Add global mouse event listeners for header dragging
+  // Add global mouse event listeners for header dragging and resizing
   window.addEventListener('mousemove', handleHeaderMouseMove)
   window.addEventListener('mouseup', handleHeaderMouseUp)
+  window.addEventListener('mouseup', handleResizeEnd)
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', updateContainerWidth)
   window.removeEventListener('mousemove', handleHeaderMouseMove)
   window.removeEventListener('mouseup', handleHeaderMouseUp)
+  window.removeEventListener('mouseup', handleResizeEnd)
 })
 </script>
 
@@ -671,7 +828,7 @@ onUnmounted(() => {
             class="room-cell"
           >
             <div class="room-number">{{ room.roomNumber }}</div>
-            <div class="room-type">{{ room.roomTypeName }}</div>
+            <div class="room-type">{{ room.roomType?.name }}</div>
             <div v-if="room.floor" class="room-floor">Floor {{ room.floor }}</div>
           </div>
         </div>
@@ -706,6 +863,7 @@ onUnmounted(() => {
                 :class="{ 'is-today': isTodayInVisibleRange(date), 'drop-target': draggedTask !== null }"
                 @dragover="handleDragOver"
                 @drop="handleDrop($event, date)"
+                @mouseenter="() => { if (resizingTask) handleResizeMove($event as MouseEvent, date) }"
               >
             <!-- Regular tasks -->
             <div
@@ -714,13 +872,28 @@ onUnmounted(() => {
               class="task-block"
               :class="[
                 getStatusClass(task.status),
-                { 'multi-day': isMultiDayTask(task) }
+                { 'multi-day': isMultiDayTask(task), 'resizing': resizingTask?.id === task.id }
               ]"
               :style="getTaskStyle(task)"
               :title="`${task.assignedUserName} - ${task.taskType} - ${task.status}`"
               draggable="true"
               @dragstart="handleDragStart(task, date)"
+              @mouseenter="(e) => {
+                const target = e.currentTarget as HTMLElement
+                target.querySelectorAll('.resize-handle').forEach(h => (h as HTMLElement).style.opacity = '1')
+              }"
+              @mouseleave="(e) => {
+                const target = e.currentTarget as HTMLElement
+                target.querySelectorAll('.resize-handle').forEach(h => (h as HTMLElement).style.opacity = '0')
+              }"
             >
+              <!-- Left resize handle -->
+              <div
+                class="resize-handle resize-handle-left"
+                @mousedown.stop="(e) => handleResizeStart(e, task, 'start')"
+                @mouseenter="(e) => e.stopPropagation()"
+              ></div>
+
               <div class="task-content">
                 <div class="task-header">
                   <span class="task-icon">{{ getTaskTypeIcon(task.taskType) }}</span>
@@ -731,6 +904,13 @@ onUnmounted(() => {
                   {{ getTaskDurationDisplay(task) }}
                 </div>
               </div>
+
+              <!-- Right resize handle -->
+              <div
+                class="resize-handle resize-handle-right"
+                @mousedown.stop="(e) => handleResizeStart(e, task, 'end')"
+                @mouseenter="(e) => e.stopPropagation()"
+              ></div>
             </div>
 
             <!-- Pending moved task (preview in new location) -->
@@ -749,17 +929,26 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <!-- Confirmation buttons (in new location where task was dropped) -->
+            <!-- Resize preview overlay -->
             <div
-              v-if="pendingMove && pendingMove.toDate === formatDateISO(date) && pendingMove.task.roomId === room.id"
-              class="confirm-move"
+              v-if="resizePreview && resizePreview.task.roomId === room.id && formatDateISO(date) === resizePreview.newStartDateTime.split('T')[0]"
+              class="task-block task-resize-preview"
+              :class="getStatusClass(resizePreview.task.status)"
+              :style="{
+                position: 'absolute',
+                width: `${getResizePreviewWidth(resizePreview)}px`,
+                zIndex: 15,
+                minHeight: '2.5rem',
+                pointerEvents: 'none'
+              }"
             >
-              <button class="btn-confirm" @click="confirmMove" :disabled="loading">
-                ✓ Confirm
-              </button>
-              <button class="btn-cancel" @click="cancelMove" :disabled="loading">
-                ✕ Cancel
-              </button>
+              <div class="task-content">
+                <div class="task-header">
+                  <span class="task-icon">{{ getTaskTypeIcon(resizePreview.task.taskType) }}</span>
+                  <span class="task-staff">{{ resizePreview.task.assignedUserName }}</span>
+                </div>
+                <div class="task-type">{{ resizePreview.task.taskType }}</div>
+              </div>
             </div>
 
                 <div v-if="getTasksStartingOnDate(room.id, date).length === 0 && (!pendingMove || pendingMove.fromDate !== formatDateISO(date) || pendingMove.task.roomId !== room.id)" class="empty-cell">
@@ -769,6 +958,19 @@ onUnmounted(() => {
             </div>
           </div>
         </Transition>
+      </div>
+
+      <!-- Lock overlay when confirming move -->
+      <div v-if="pendingMove" class="calendar-lock-overlay" @click="cancelMove"></div>
+
+      <!-- Floating confirmation buttons -->
+      <div v-if="pendingMove" class="confirm-buttons-container" :style="getConfirmButtonsPosition()" @click.stop>
+        <button class="btn-confirm" @click="confirmMove" :disabled="loading">
+          ✓ Confirm
+        </button>
+        <button class="btn-cancel" @click="cancelMove" :disabled="loading">
+          ✕ Cancel
+        </button>
       </div>
     </div>
 
@@ -1111,6 +1313,7 @@ onUnmounted(() => {
   border-right: 1px solid var(--color-border);
   position: sticky;
   top: 0;
+  left: 0;
   z-index: 11;
   height: 4rem;
   box-sizing: border-box;
@@ -1288,21 +1491,48 @@ onUnmounted(() => {
 }
 
 .date-cell.is-today {
-  background: var(--color-primary-light);
+  position: relative;
   border-left: 2px solid var(--color-primary);
   border-right: 2px solid var(--color-primary);
+}
+
+.date-cell.is-today::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--color-primary-light);
   opacity: 0.3;
+  pointer-events: none;
+  z-index: -1;
 }
 
 .date-cell.drop-target {
-  background: var(--color-primary-light);
-  opacity: 0.3;
+  position: relative;
   transition: background 0.2s;
 }
 
-.date-cell.drop-target:hover {
+.date-cell.drop-target::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: var(--color-primary-light);
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: -1;
+  transition: opacity 0.2s;
+}
+
+.date-cell.drop-target:hover::before {
   opacity: 0.5;
+}
+
+.date-cell.drop-target:hover {
   outline: 2px dashed var(--color-primary);
   outline-offset: -2px;
 }
@@ -1311,20 +1541,52 @@ onUnmounted(() => {
   min-height: 2rem;
 }
 
-.confirm-move {
+/* Calendar lock overlay */
+.calendar-lock-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.1);
+  z-index: 50;
+  cursor: pointer;
+  backdrop-filter: blur(1px);
+}
+
+/* Floating confirmation buttons */
+.confirm-buttons-container {
+  position: absolute;
+  z-index: 100;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  padding: 0.25rem;
+  background: var(--color-background);
+  padding: 0.5rem;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--color-border);
+  animation: fadeIn 0.15s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .btn-confirm,
 .btn-cancel {
-  padding: 0.4rem 0.5rem;
+  padding: 0.4rem 0.75rem;
   border: none;
   border-radius: 3px;
   cursor: pointer;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 600;
   transition: all 0.15s;
   white-space: nowrap;
@@ -1347,7 +1609,7 @@ onUnmounted(() => {
 
 .btn-cancel:hover:not(:disabled) {
   background: var(--status-cancelled);
-  opacity: 0.8;
+  opacity: 0.85;
   transform: scale(1.02);
 }
 
@@ -1366,6 +1628,50 @@ onUnmounted(() => {
   border-left: 2px solid transparent;
   line-height: 1.2;
   margin-bottom: 0.25rem;
+  position: relative;
+}
+
+/* Resize handles */
+.resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+  z-index: 10;
+}
+
+.resize-handle:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.resize-handle-left {
+  left: 0;
+  border-left: 2px solid transparent;
+}
+
+.resize-handle-left:hover {
+  border-left-color: var(--color-primary);
+}
+
+.resize-handle-right {
+  right: 0;
+  border-right: 2px solid transparent;
+}
+
+.resize-handle-right:hover {
+  border-right-color: var(--color-primary);
+}
+
+.task-block.resizing {
+  opacity: 0.6;
+  cursor: ew-resize;
+}
+
+.task-block.resizing .resize-handle {
+  opacity: 1;
 }
 
 .task-block:hover {
@@ -1386,12 +1692,29 @@ onUnmounted(() => {
   animation: pulse 1s ease-in-out infinite;
 }
 
+.task-resize-preview {
+  opacity: 0.7;
+  border: 2px dashed var(--color-primary);
+  animation: pulse-resize 0.8s ease-in-out infinite;
+}
+
 @keyframes pulse {
   0%, 100% {
     opacity: 0.6;
   }
   50% {
     opacity: 0.8;
+  }
+}
+
+@keyframes pulse-resize {
+  0%, 100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.01);
   }
 }
 

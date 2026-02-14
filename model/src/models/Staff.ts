@@ -20,20 +20,23 @@ export class Staff extends Model {
     type: DataType.INTEGER,
     allowNull: true,
     unique: true,
+    field: 'user_id',
   })
-  declare user_id: number | null;
+  declare userId: number | null;
 
   @Column({
     type: DataType.STRING(100),
     allowNull: false,
+    field: 'first_name',
   })
-  declare first_name: string;
+  declare firstName: string;
 
   @Column({
     type: DataType.STRING(100),
     allowNull: false,
+    field: 'last_name',
   })
-  declare last_name: string;
+  declare lastName: string;
 
   @Column({
     type: DataType.STRING(20),
@@ -56,14 +59,16 @@ export class Staff extends Model {
   @Column({
     type: DataType.DATEONLY,
     allowNull: true,
+    field: 'employment_date',
   })
-  declare employment_date: Date | null;
+  declare employmentDate: Date | null;
 
   @Column({
     type: DataType.DECIMAL(10, 2),
     allowNull: true,
+    field: 'hourly_rate',
   })
-  declare hourly_rate: number | null;
+  declare hourlyRate: number | null;
 
   @Column({
     type: DataType.ENUM('active', 'on_leave', 'terminated'),
@@ -83,14 +88,14 @@ export class Staff extends Model {
     allowNull: false,
     field: 'created_at',
   })
-  declare created_at: Date;
+  declare createdAt: Date;
 
   @Column({
     type: DataType.DATE,
     allowNull: false,
     field: 'updated_at',
   })
-  declare updated_at: Date;
+  declare updatedAt: Date;
 
   // Associations
   @BelongsTo(() => User, 'user_id')
@@ -100,8 +105,8 @@ export class Staff extends Model {
   declare tasks?: Task[];
 
   @HasMany(() => Reservation, 'booked_by_staff_id')
-  declare booked_reservations?: Reservation[];
+  declare bookedReservations?: Reservation[];
 
   @HasMany(() => Reservation, 'cancelled_by_staff_id')
-  declare cancelled_reservations?: Reservation[];
+  declare cancelledReservations?: Reservation[];
 }

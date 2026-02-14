@@ -83,7 +83,7 @@ const fetchTasks = async () => {
     if (userFilter.value !== 'all') params.append('userId', userFilter.value)
 
     const queryString = params.toString()
-    const url = queryString ? `${API_URL}/housekeeping-tasks?${queryString}` : `${API_URL}/housekeeping-tasks`
+    const url = queryString ? `${API_URL}/tasks?${queryString}` : `${API_URL}/tasks`
 
     const response = await fetch(url)
     const data = await response.json()
@@ -175,7 +175,7 @@ const addTask = async () => {
       requestBody.taskDate = formData.value.taskDate
     }
 
-    const response = await fetch(`${API_URL}/housekeeping-tasks`, {
+    const response = await fetch(`${API_URL}/tasks`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody)
@@ -267,7 +267,7 @@ const updateTask = async () => {
       requestBody.taskDate = formData.value.taskDate
     }
 
-    const response = await fetch(`${API_URL}/housekeeping-tasks/${editingTask.value.id}`, {
+    const response = await fetch(`${API_URL}/tasks/${editingTask.value.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody)
@@ -295,7 +295,7 @@ const deleteTask = async (taskId: string) => {
   error.value = ''
 
   try {
-    const response = await fetch(`${API_URL}/housekeeping-tasks/${taskId}`, {
+    const response = await fetch(`${API_URL}/tasks/${taskId}`, {
       method: 'DELETE'
     })
 
@@ -317,7 +317,7 @@ const startTask = async (task: HousekeepingTask) => {
   error.value = ''
 
   try {
-    const response = await fetch(`${API_URL}/housekeeping-tasks/${task.id}`, {
+    const response = await fetch(`${API_URL}/tasks/${task.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'in_progress' })
@@ -341,7 +341,7 @@ const completeTask = async (task: HousekeepingTask) => {
   error.value = ''
 
   try {
-    const response = await fetch(`${API_URL}/housekeeping-tasks/${task.id}`, {
+    const response = await fetch(`${API_URL}/tasks/${task.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'completed' })
@@ -429,7 +429,7 @@ onMounted(async () => {
 
 <template>
   <div class="housekeeping-manager">
-    <h1>Housekeeping Task Management</h1>
+    <h1>Task Management</h1>
 
     <div class="form-container">
       <h2>{{ editingTask ? 'Edit Task' : 'Add New Task' }}</h2>

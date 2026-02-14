@@ -1,5 +1,8 @@
 import "dotenv/config";
-import {
+import { db } from "../src/db.js";
+
+// Access models from db instance
+const {
   User,
   Staff,
   RoomType,
@@ -8,7 +11,7 @@ import {
   Guest,
   RatePlan,
   RoomRate
-} from "./db/index.js";
+} = db.models;
 
 async function seed() {
   try {

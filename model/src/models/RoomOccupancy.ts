@@ -18,21 +18,24 @@ export class RoomOccupancy extends Model {
   @Column({
     type: DataType.INTEGER,
     allowNull: false,
+    field: 'room_id',
   })
-  declare room_id: number;
+  declare roomId: number;
 
   @ForeignKey(() => Reservation)
   @Column({
     type: DataType.INTEGER,
     allowNull: true,
+    field: 'reservation_id',
   })
-  declare reservation_id: number | null;
+  declare reservationId: number | null;
 
   @Column({
     type: DataType.DATEONLY,
     allowNull: false,
+    field: 'occupancy_date',
   })
-  declare occupancy_date: Date;
+  declare occupancyDate: Date;
 
   @Column({
     type: DataType.ENUM('available', 'occupied', 'blocked', 'maintenance'),
@@ -52,14 +55,14 @@ export class RoomOccupancy extends Model {
     allowNull: false,
     field: 'created_at',
   })
-  declare created_at: Date;
+  declare createdAt: Date;
 
   @Column({
     type: DataType.DATE,
     allowNull: false,
     field: 'updated_at',
   })
-  declare updated_at: Date;
+  declare updatedAt: Date;
 
   // Associations
   @BelongsTo(() => Room, 'room_id')

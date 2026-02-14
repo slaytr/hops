@@ -22,48 +22,55 @@ export class Reservation extends Model {
     type: DataType.STRING(50),
     allowNull: false,
     unique: true,
+    field: 'confirmation_number',
   })
-  declare confirmation_number: string;
+  declare confirmationNumber: string;
 
   @ForeignKey(() => Guest)
   @Column({
     type: DataType.INTEGER,
     allowNull: false,
+    field: 'guest_id',
   })
-  declare guest_id: number;
+  declare guestId: number;
 
   @ForeignKey(() => Room)
   @Column({
     type: DataType.INTEGER,
     allowNull: true,
+    field: 'room_id',
   })
-  declare room_id: number | null;
+  declare roomId: number | null;
 
   @ForeignKey(() => RoomType)
   @Column({
     type: DataType.INTEGER,
     allowNull: false,
+    field: 'room_type_id',
   })
-  declare room_type_id: number;
+  declare roomTypeId: number;
 
   @ForeignKey(() => RatePlan)
   @Column({
     type: DataType.INTEGER,
     allowNull: false,
+    field: 'rate_plan_id',
   })
-  declare rate_plan_id: number;
+  declare ratePlanId: number;
 
   @Column({
     type: DataType.DATEONLY,
     allowNull: false,
+    field: 'check_in_date',
   })
-  declare check_in_date: Date;
+  declare checkInDate: Date;
 
   @Column({
     type: DataType.DATEONLY,
     allowNull: false,
+    field: 'check_out_date',
   })
-  declare check_out_date: Date;
+  declare checkOutDate: Date;
 
   @Column({
     type: DataType.INTEGER,
@@ -82,28 +89,31 @@ export class Reservation extends Model {
   @Column({
     type: DataType.DECIMAL(10, 2),
     allowNull: false,
+    field: 'total_rate',
   })
-  declare total_rate: number;
+  declare totalRate: number;
 
   @Column({
     type: DataType.DECIMAL(10, 2),
     allowNull: false,
     defaultValue: 0.00,
+    field: 'tax_amount',
   })
-  declare tax_amount: number;
+  declare taxAmount: number;
 
   @Column({
     type: DataType.DECIMAL(10, 2),
     allowNull: false,
     defaultValue: 0.00,
+    field: 'deposit_paid',
   })
-  declare deposit_paid: number;
+  declare depositPaid: number;
 
   @Column({
     type: DataType.VIRTUAL(DataType.INTEGER),
     get() {
-      const checkIn = this.getDataValue('check_in_date');
-      const checkOut = this.getDataValue('check_out_date');
+      const checkIn = this.getDataValue('checkInDate');
+      const checkOut = this.getDataValue('checkOutDate');
       if (checkIn && checkOut) {
         const diff = new Date(checkOut).getTime() - new Date(checkIn).getTime();
         return Math.ceil(diff / (1000 * 60 * 60 * 24));
@@ -116,23 +126,23 @@ export class Reservation extends Model {
   @Column({
     type: DataType.VIRTUAL(DataType.DECIMAL(10, 2)),
     get() {
-      const total = parseFloat(this.getDataValue('total_rate') || '0');
-      const tax = parseFloat(this.getDataValue('tax_amount') || '0');
+      const total = parseFloat(this.getDataValue('totalRate') || '0');
+      const tax = parseFloat(this.getDataValue('taxAmount') || '0');
       return (total + tax).toFixed(2);
     },
   })
-  declare total_amount: string;
+  declare totalAmount: string;
 
   @Column({
     type: DataType.VIRTUAL(DataType.DECIMAL(10, 2)),
     get() {
-      const total = parseFloat(this.getDataValue('total_rate') || '0');
-      const tax = parseFloat(this.getDataValue('tax_amount') || '0');
-      const deposit = parseFloat(this.getDataValue('deposit_paid') || '0');
+      const total = parseFloat(this.getDataValue('totalRate') || '0');
+      const tax = parseFloat(this.getDataValue('taxAmount') || '0');
+      const deposit = parseFloat(this.getDataValue('depositPaid') || '0');
       return (total + tax - deposit).toFixed(2);
     },
   })
-  declare balance_due: string;
+  declare balanceDue: string;
 
   @Column({
     type: DataType.ENUM('pending', 'confirmed', 'checked_in', 'checked_out', 'cancelled', 'no_show'),
@@ -144,8 +154,9 @@ export class Reservation extends Model {
   @Column({
     type: DataType.TEXT,
     allowNull: true,
+    field: 'special_requests',
   })
-  declare special_requests: string | null;
+  declare specialRequests: string | null;
 
   @Column({
     type: DataType.TEXT,
@@ -157,35 +168,38 @@ export class Reservation extends Model {
   @Column({
     type: DataType.INTEGER,
     allowNull: true,
+    field: 'booked_by_staff_id',
   })
-  declare booked_by_staff_id: number | null;
+  declare bookedByStaffId: number | null;
 
   @ForeignKey(() => Staff)
   @Column({
     type: DataType.INTEGER,
     allowNull: true,
+    field: 'cancelled_by_staff_id',
   })
-  declare cancelled_by_staff_id: number | null;
+  declare cancelledByStaffId: number | null;
 
   @Column({
     type: DataType.DATE,
     allowNull: true,
+    field: 'cancelled_at',
   })
-  declare cancelled_at: Date | null;
+  declare cancelledAt: Date | null;
 
   @Column({
     type: DataType.DATE,
     allowNull: false,
     field: 'created_at',
   })
-  declare created_at: Date;
+  declare createdAt: Date;
 
   @Column({
     type: DataType.DATE,
     allowNull: false,
     field: 'updated_at',
   })
-  declare updated_at: Date;
+  declare updatedAt: Date;
 
   // Associations
   @BelongsTo(() => Guest, 'guest_id')
@@ -195,16 +209,16 @@ export class Reservation extends Model {
   declare room?: Room;
 
   @BelongsTo(() => RoomType, 'room_type_id')
-  declare room_type?: RoomType;
+  declare roomType?: RoomType;
 
   @BelongsTo(() => RatePlan, 'rate_plan_id')
-  declare rate_plan?: RatePlan;
+  declare ratePlan?: RatePlan;
 
   @BelongsTo(() => Staff, 'booked_by_staff_id')
-  declare booked_by_staff?: Staff;
+  declare bookedByStaff?: Staff;
 
   @BelongsTo(() => Staff, 'cancelled_by_staff_id')
-  declare cancelled_by_staff?: Staff;
+  declare cancelledByStaff?: Staff;
 
   @HasMany(() => RoomOccupancy, 'reservation_id')
   declare occupancies?: RoomOccupancy[];

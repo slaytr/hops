@@ -19,20 +19,23 @@ export class Guest extends Model {
     type: DataType.INTEGER,
     allowNull: true,
     unique: true,
+    field: 'user_id',
   })
-  declare user_id: number | null;
+  declare userId: number | null;
 
   @Column({
     type: DataType.STRING(100),
     allowNull: false,
+    field: 'first_name',
   })
-  declare first_name: string;
+  declare firstName: string;
 
   @Column({
     type: DataType.STRING(100),
     allowNull: false,
+    field: 'last_name',
   })
-  declare last_name: string;
+  declare lastName: string;
 
   @Column({
     type: DataType.STRING(255),
@@ -49,14 +52,16 @@ export class Guest extends Model {
   @Column({
     type: DataType.STRING(255),
     allowNull: true,
+    field: 'address_line1',
   })
-  declare address_line1: string | null;
+  declare addressLine1: string | null;
 
   @Column({
     type: DataType.STRING(255),
     allowNull: true,
+    field: 'address_line2',
   })
-  declare address_line2: string | null;
+  declare addressLine2: string | null;
 
   @Column({
     type: DataType.STRING(100),
@@ -67,14 +72,16 @@ export class Guest extends Model {
   @Column({
     type: DataType.STRING(100),
     allowNull: true,
+    field: 'state_province',
   })
-  declare state_province: string | null;
+  declare stateProvince: string | null;
 
   @Column({
     type: DataType.STRING(20),
     allowNull: true,
+    field: 'postal_code',
   })
-  declare postal_code: string | null;
+  declare postalCode: string | null;
 
   @Column({
     type: DataType.STRING(100),
@@ -85,14 +92,16 @@ export class Guest extends Model {
   @Column({
     type: DataType.ENUM('passport', 'drivers_license', 'national_id', 'other'),
     allowNull: true,
+    field: 'id_type',
   })
-  declare id_type: 'passport' | 'drivers_license' | 'national_id' | 'other' | null;
+  declare idType: 'passport' | 'drivers_license' | 'national_id' | 'other' | null;
 
   @Column({
     type: DataType.STRING(50),
     allowNull: true,
+    field: 'id_number',
   })
-  declare id_number: string | null;
+  declare idNumber: string | null;
 
   @Column({
     type: DataType.JSON,
@@ -104,8 +113,9 @@ export class Guest extends Model {
     type: DataType.BOOLEAN,
     allowNull: false,
     defaultValue: false,
+    field: 'vip_status',
   })
-  declare vip_status: boolean;
+  declare vipStatus: boolean;
 
   @Column({
     type: DataType.TEXT,
@@ -118,14 +128,14 @@ export class Guest extends Model {
     allowNull: false,
     field: 'created_at',
   })
-  declare created_at: Date;
+  declare createdAt: Date;
 
   @Column({
     type: DataType.DATE,
     allowNull: false,
     field: 'updated_at',
   })
-  declare updated_at: Date;
+  declare updatedAt: Date;
 
   // Associations
   @BelongsTo(() => User, 'user_id')

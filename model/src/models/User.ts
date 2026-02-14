@@ -24,14 +24,16 @@ export class User extends Model {
   @Column({
     type: DataType.STRING(255),
     allowNull: true,
+    field: 'password_hash',
   })
-  declare password_hash: string | null;
+  declare passwordHash: string | null;
 
   @Column({
     type: DataType.ENUM('staff', 'guest', 'admin'),
     allowNull: false,
+    field: 'user_type',
   })
-  declare user_type: 'staff' | 'guest' | 'admin';
+  declare userType: 'staff' | 'guest' | 'admin';
 
   @Column({
     type: DataType.ENUM('active', 'inactive', 'suspended'),
@@ -43,22 +45,23 @@ export class User extends Model {
   @Column({
     type: DataType.DATE,
     allowNull: true,
+    field: 'last_login',
   })
-  declare last_login: Date | null;
+  declare lastLogin: Date | null;
 
   @Column({
     type: DataType.DATE,
     allowNull: false,
     field: 'created_at',
   })
-  declare created_at: Date;
+  declare createdAt: Date;
 
   @Column({
     type: DataType.DATE,
     allowNull: false,
     field: 'updated_at',
   })
-  declare updated_at: Date;
+  declare updatedAt: Date;
 
   // Associations
   @HasOne(() => Staff, 'user_id')

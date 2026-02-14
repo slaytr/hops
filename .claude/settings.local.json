@@ -43,7 +43,13 @@
       "Bash(npm uninstall:*)",
       "Bash(pkill:*)",
       "Bash(taskkill:*)",
-      "Bash(xargs kill:*)"
+      "Bash(xargs kill:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npm run lint:eslint:*)",
+      "Bash(grep:*)",
+      "Bash(npm start)",
+      "Bash(netstat:*)",
+      "Bash(tsx test:*)"
     ]
   }
 }

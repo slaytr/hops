@@ -18,15 +18,17 @@ export class RoomRate extends Model {
   @Column({
     type: DataType.INTEGER,
     allowNull: false,
+    field: 'room_type_id',
   })
-  declare room_type_id: number;
+  declare roomTypeId: number;
 
   @ForeignKey(() => RatePlan)
   @Column({
     type: DataType.INTEGER,
     allowNull: false,
+    field: 'rate_plan_id',
   })
-  declare rate_plan_id: number;
+  declare ratePlanId: number;
 
   @Column({
     type: DataType.DECIMAL(10, 2),
@@ -38,53 +40,58 @@ export class RoomRate extends Model {
     type: DataType.ENUM('all', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'),
     allowNull: false,
     defaultValue: 'all',
+    field: 'day_of_week',
   })
-  declare day_of_week: 'all' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+  declare dayOfWeek: 'all' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
 
   @Column({
     type: DataType.DECIMAL(10, 2),
     allowNull: false,
     defaultValue: 0.00,
+    field: 'extra_person_rate',
   })
-  declare extra_person_rate: number;
+  declare extraPersonRate: number;
 
   @Column({
     type: DataType.DECIMAL(10, 2),
     allowNull: false,
     defaultValue: 0.00,
+    field: 'extra_child_rate',
   })
-  declare extra_child_rate: number;
+  declare extraChildRate: number;
 
   @Column({
     type: DataType.DATEONLY,
     allowNull: true,
+    field: 'effective_from',
   })
-  declare effective_from: Date | null;
+  declare effectiveFrom: Date | null;
 
   @Column({
     type: DataType.DATEONLY,
     allowNull: true,
+    field: 'effective_to',
   })
-  declare effective_to: Date | null;
+  declare effectiveTo: Date | null;
 
   @Column({
     type: DataType.DATE,
     allowNull: false,
     field: 'created_at',
   })
-  declare created_at: Date;
+  declare createdAt: Date;
 
   @Column({
     type: DataType.DATE,
     allowNull: false,
     field: 'updated_at',
   })
-  declare updated_at: Date;
+  declare updatedAt: Date;
 
   // Associations
   @BelongsTo(() => RoomType, 'room_type_id')
-  declare room_type?: RoomType;
+  declare roomType?: RoomType;
 
   @BelongsTo(() => RatePlan, 'rate_plan_id')
-  declare rate_plan?: RatePlan;
+  declare ratePlan?: RatePlan;
 }

@@ -15,7 +15,7 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "emitDecoratorMetadata": false
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.sql"]

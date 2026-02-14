@@ -1,20 +1,26 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
-import UserManager from './components/UserManager.vue'
-import RoomTypeManager from './components/RoomTypeManager.vue'
-import RoomManager from './components/RoomManager.vue'
-import HousekeepingTaskManager from './components/HousekeepingTaskManager.vue'
-import ControlRoom from './components/ControlRoom.vue'
+import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 
-const activeTab = ref<'controlroom' | 'settings'>('controlroom')
-const activeSettingsView = ref<'housekeeping' | 'rooms' | 'roomTypes' | 'users'>('housekeeping')
+const router = useRouter()
+const route = useRoute()
+
+// Computed properties for active states
+const isOperationsHub = computed(() => route.path.startsWith('/ops-hub'))
+const isSettings = computed(() => route.path.startsWith('/settings'))
+const activeSettingsView = computed(() => {
+  // Extract the view from the path (e.g., /settings/tasks -> tasks)
+  const pathParts = route.path.split('/')
+  const view = pathParts[pathParts.length - 1]
+  return view || 'tasks'
+})
 
 // Tab indicator animation
 const tabIndicatorStyle = ref({ left: '0px', width: '0px' })
 
 const updateTabIndicator = async () => {
   await nextTick()
-  const activeButton = document.querySelector('.tabs button.active') as HTMLElement
+  const activeButton = document.querySelector('.tabs a.active') as HTMLElement
   if (activeButton) {
     const tabsContainer = document.querySelector('.tabs') as HTMLElement
     const containerRect = tabsContainer.getBoundingClientRect()
@@ -26,9 +32,12 @@ const updateTabIndicator = async () => {
   }
 }
 
-const setActiveTab = (tab: 'controlroom' | 'settings') => {
-  activeTab.value = tab
-  updateTabIndicator()
+const setActiveTab = (tab: 'ops-hub' | 'settings') => {
+  if (tab === 'ops-hub') {
+    router.push('/ops-hub')
+  } else {
+    router.push('/settings/tasks')
+  }
 }
 
 // Keyboard navigation
@@ -42,7 +51,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
   switch (event.key) {
     case 'ArrowLeft':
       event.preventDefault()
-      setActiveTab('controlroom')
+      setActiveTab('ops-hub')
       break
     case 'ArrowRight':
       event.preventDefault()
@@ -51,7 +60,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
     case 'Backspace':
       event.preventDefault()
       // Toggle between tabs
-      setActiveTab(activeTab.value === 'controlroom' ? 'settings' : 'controlroom')
+      setActiveTab(isOperationsHub.value ? 'settings' : 'ops-hub')
       break
   }
 }
@@ -78,6 +87,11 @@ const getThemeIcon = () => {
 const getThemeLabel = () => {
   return currentTheme.value === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'
 }
+
+// Watch route changes to update tab indicator
+watch(() => route.path, () => {
+  updateTabIndicator()
+})
 
 onMounted(() => {
   // Load saved theme preference, default to light
@@ -109,12 +123,12 @@ onUnmounted(() => {
     <header>
       <h1>hops</h1>
       <nav class="tabs">
-        <button @click="setActiveTab('controlroom')" :class="{ active: activeTab === 'controlroom' }">
+        <router-link to="/ops-hub" :class="{ active: isOperationsHub }">
           <i class="codicon codicon-calendar"></i> Operations Hub
-        </button>
-        <button @click="setActiveTab('settings')" :class="{ active: activeTab === 'settings' }">
+        </router-link>
+        <router-link to="/settings/tasks" :class="{ active: isSettings }">
           <i class="codicon codicon-settings-gear"></i> Settings
-        </button>
+        </router-link>
         <div class="tab-indicator" :style="tabIndicatorStyle"></div>
       </nav>
       <button class="theme-toggle" @click="toggleTheme" :title="getThemeLabel()">
@@ -123,27 +137,23 @@ onUnmounted(() => {
     </header>
 
     <!-- Settings sub-navigation -->
-    <nav v-if="activeTab === 'settings'" class="settings-nav">
-      <button @click="activeSettingsView = 'housekeeping'" :class="{ active: activeSettingsView === 'housekeeping' }">
-        Housekeeping
-      </button>
-      <button @click="activeSettingsView = 'rooms'" :class="{ active: activeSettingsView === 'rooms' }">
+    <nav v-if="isSettings" class="settings-nav">
+      <router-link to="/settings/tasks" :class="{ active: activeSettingsView === 'tasks' }">
+        Tasks
+      </router-link>
+      <router-link to="/settings/rooms" :class="{ active: activeSettingsView === 'rooms' }">
         Rooms
-      </button>
-      <button @click="activeSettingsView = 'roomTypes'" :class="{ active: activeSettingsView === 'roomTypes' }">
+      </router-link>
+      <router-link to="/settings/room-types" :class="{ active: activeSettingsView === 'room-types' }">
         Room Types
-      </button>
-      <button @click="activeSettingsView = 'users'" :class="{ active: activeSettingsView === 'users' }">
+      </router-link>
+      <router-link to="/settings/users" :class="{ active: activeSettingsView === 'users' }">
         Users
-      </button>
+      </router-link>
     </nav>
 
     <main>
-      <ControlRoom v-if="activeTab === 'controlroom'" />
-      <HousekeepingTaskManager v-else-if="activeTab === 'settings' && activeSettingsView === 'housekeeping'" />
-      <RoomManager v-else-if="activeTab === 'settings' && activeSettingsView === 'rooms'" />
-      <RoomTypeManager v-else-if="activeTab === 'settings' && activeSettingsView === 'roomTypes'" />
-      <UserManager v-else-if="activeTab === 'settings' && activeSettingsView === 'users'" />
+      <router-view />
     </main>
   </div>
 </template>
@@ -219,7 +229,7 @@ header h1 {
   position: relative;
 }
 
-.tabs button {
+.tabs a {
   padding: 0.5rem 1rem;
   background: transparent;
   color: var(--color-text);
@@ -231,13 +241,14 @@ header h1 {
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  text-decoration: none;
 }
 
-.tabs button.active {
+.tabs a.active {
   color: var(--color-primary);
 }
 
-.tabs button:hover:not(.active) {
+.tabs a:hover:not(.active) {
   color: var(--color-heading);
 }
 
@@ -259,7 +270,7 @@ header h1 {
   flex-shrink: 0;
 }
 
-.settings-nav button {
+.settings-nav a {
   padding: 0.4rem 0.75rem;
   background: transparent;
   color: var(--color-text);
@@ -269,14 +280,15 @@ header h1 {
   font-size: 0.8rem;
   transition: all 0.2s;
   white-space: nowrap;
+  text-decoration: none;
 }
 
-.settings-nav button.active {
+.settings-nav a.active {
   background: var(--color-primary-light);
   color: var(--color-primary-dark);
 }
 
-.settings-nav button:hover:not(.active) {
+.settings-nav a:hover:not(.active) {
   background: var(--color-background-soft);
   color: var(--color-heading);
 }
