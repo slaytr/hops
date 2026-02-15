@@ -10,10 +10,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm start` - Run compiled server
 
 ### Docker
+
+#### Development Mode (with hot reloading)
+- `docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d` - Start in dev mode
+- Frontend runs on port 5173 with Vite dev server
+- Source files are mounted as volumes - changes reflect immediately
+- No container rebuild needed for source code changes
+
+#### Production Mode
 - `docker-compose up -d` - Start all services (frontend, backend, mysql)
 - `docker-compose down` - Stop all services
 - `docker-compose up -d --build [service]` - Rebuild and restart a service
-- See [DOCKER.md](./DOCKER.md) for complete Docker documentation
+
+See [DEVELOPMENT.md](./DEVELOPMENT.md) for detailed development workflow
+See [DOCKER.md](./DOCKER.md) for complete Docker documentation
 
 ## Architecture
 

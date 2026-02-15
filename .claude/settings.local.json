@@ -50,7 +50,17 @@
       "Bash(npm start)",
       "Bash(netstat:*)",
       "Bash(tsx test:*)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(start idea64 \"C:\\\\Users\\\\Bill Li\\\\Documents\\\\Github\\\\hops\")",
+      "Bash(docker-compose build:*)",
+      "Bash(start chrome http://localhost)",
+      "Bash(npm version:*)",
+      "Bash(ls:*)",
+      "Bash(wc:*)",
+      "Bash(docker-compose:*)",
+      "Bash(start chrome http://localhost:5173)",
+      "Bash(python3:*)",
+      "Bash(python:*)"
     ]
   }
 }

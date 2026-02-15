@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
+import { useOpsHubSettings } from '../composables/useOpsHubSettings'
 
 const API_URL = 'http://localhost:3000'
+
+const { roomSortBy } = useOpsHubSettings()
 
 interface HousekeepingTask {
   id: string
@@ -58,9 +61,10 @@ const DATE_COLUMN_WIDTH = 100
 // Quadrant system constants
 const QUADRANT_WIDTH = 25 // px
 const QUADRANTS_PER_CELL = 4
-const TASK_HEIGHT = 24 // px
-const TASK_SPACING = 2 // px
+const TASK_HEIGHT = 24 // px - half of BASE_ROW_HEIGHT, 2 tasks fit without expanding
+const TASK_SPACING = 0 // px
 const BASE_ROW_HEIGHT = 48 // px
+const TASKS_BEFORE_EXPAND = 2 // number of tasks that fit before row expands
 
 // Drag and drop state
 const draggedTask = ref<HousekeepingTask | null>(null)
@@ -139,12 +143,18 @@ const dates = computed(() => {
 const filteredRooms = computed(() => {
   let filtered = [...rooms.value]
 
-  // Sort by room number
-  filtered.sort((a, b) => {
-    const numA = parseInt(a.roomNumber) || 0
-    const numB = parseInt(b.roomNumber) || 0
-    return numA - numB
-  })
+  if (roomSortBy.value === 'roomType') {
+    filtered.sort((a, b) => {
+      const typeA = a.roomType?.name || ''
+      const typeB = b.roomType?.name || ''
+      if (typeA !== typeB) return typeA.localeCompare(typeB)
+      return (parseInt(a.roomNumber) || 0) - (parseInt(b.roomNumber) || 0)
+    })
+  } else {
+    filtered.sort((a, b) => {
+      return (parseInt(a.roomNumber) || 0) - (parseInt(b.roomNumber) || 0)
+    })
+  }
 
   return filtered
 })
@@ -195,9 +205,9 @@ const rowHeights = computed(() => {
       }
     }
 
-    // Calculate height: base + additional height for stacked tasks
-    const height = maxTracks > 0
-      ? BASE_ROW_HEIGHT + ((maxTracks - 1) * (TASK_HEIGHT + TASK_SPACING))
+    // Calculate height: base fits 2 tasks, expand only for 3+
+    const height = maxTracks > TASKS_BEFORE_EXPAND
+      ? BASE_ROW_HEIGHT + ((maxTracks - TASKS_BEFORE_EXPAND) * TASK_HEIGHT)
       : BASE_ROW_HEIGHT
 
     heights.set(room.id, height)
@@ -223,8 +233,8 @@ const fetchRooms = async () => {
 const fetchTasks = async () => {
   try {
     // Fetch all tasks in visible date range
-    const rangeStart = formatDateISO(dates.value[0])
-    const rangeEnd = formatDateISO(dates.value[dates.value.length - 1])
+    const rangeStart = formatDateISO(dates.value[0] as Date)
+    const rangeEnd = formatDateISO(dates.value[dates.value.length - 1] as Date)
 
     const response = await fetch(
       `${API_URL}/tasks?startDate=${rangeStart}&endDate=${rangeEnd}`
@@ -325,7 +335,7 @@ const getTasksStartingOnDate = (roomId: string, date: Date): HousekeepingTask[] 
 }
 
 const formatDateISO = (date: Date): string => {
-  return date.toISOString().split('T')[0]
+  return date.toISOString().split('T')[0] as string
 }
 
 const formatDateDisplay = (date: Date): string => {
@@ -369,6 +379,11 @@ const isToday = (date: Date): boolean => {
   return compareDate.getTime() === today.getTime()
 }
 
+const isWeekend = (date: Date): boolean => {
+  const day = date.getDay()
+  return day === 0 || day === 6
+}
+
 // Multi-day task helper functions
 const getTaskDateRange = (task: HousekeepingTask): Date[] => {
   const dates: Date[] = []
@@ -402,7 +417,7 @@ const getQuadrantFromDateTime = (dateTime: string): number => {
 // Convert quadrant number to DateTime string
 const quadrantToDateTime = (dateStr: string, quadrant: number): string => {
   const hours = [6, 12, 18, 21]
-  return `${dateStr}T${hours[quadrant - 1].toString().padStart(2, '0')}:00:00Z`
+  return `${dateStr}T${(hours[quadrant - 1] as number).toString().padStart(2, '0')}:00:00Z`
 }
 
 // Calculate task width based on quadrant span
@@ -414,8 +429,8 @@ const getTaskQuadrantWidth = (task: HousekeepingTask): number => {
   const start = new Date(task.startDateTime)
   const end = new Date(task.endDateTime)
 
-  const startDate = new Date(start.toISOString().split('T')[0])
-  const endDate = new Date(end.toISOString().split('T')[0])
+  const startDate = new Date(start.toISOString().split('T')[0] as string)
+  const endDate = new Date(end.toISOString().split('T')[0] as string)
 
   const startQuadrant = getQuadrantFromDateTime(task.startDateTime)
   const endQuadrant = getQuadrantFromDateTime(task.endDateTime)
@@ -462,8 +477,8 @@ const migrateTaskToQuadrants = (task: HousekeepingTask): HousekeepingTask => {
     // Round to nearest quadrant
     const quadrant = getQuadrantFromDateTime(task.startDateTime)
     const endQuadrant = getQuadrantFromDateTime(task.endDateTime)
-    const startDate = task.startDateTime.split('T')[0]
-    const endDate = task.endDateTime.split('T')[0]
+    const startDate = task.startDateTime.split('T')[0]!
+    const endDate = task.endDateTime.split('T')[0]!
 
     return {
       ...task,
@@ -490,21 +505,18 @@ const taskStartsOnDate = (task: HousekeepingTask, date: Date): boolean => {
   return dateStr === start
 }
 
-const getTaskStyle = (task: HousekeepingTask, roomId: string, startDate: Date) => {
+const getTaskStyle = (task: HousekeepingTask, roomId: string, startDate: Date): Record<string, string | number> => {
   const width = getTaskQuadrantWidth(task)
   const left = getTaskQuadrantOffset(task)
   const verticalOffset = getTaskVerticalOffset(task, roomId, startDate)
 
-  // All tasks use absolute positioning to overlay the quadrant zones
-  const baseTop = 0.25 * 16 // 0.25rem padding
-
   return {
     position: 'absolute',
     width: `${width}px`,
-    left: `${0.25 * 16 + left}px`, // Add cell padding to left offset
-    top: `${baseTop + verticalOffset}px`,
+    left: `${left}px`,
+    top: `${verticalOffset}px`,
     zIndex: isMultiDayTask(task) ? 10 : 5,
-    minHeight: `${TASK_HEIGHT}px`
+    height: `${TASK_HEIGHT}px`
   }
 }
 
@@ -526,7 +538,7 @@ const getStaffInitials = (name: string | undefined): string => {
   if (!name) return '?'
   const parts = name.split(' ')
   if (parts.length >= 2) {
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase()
   }
   return name.substring(0, 2).toUpperCase()
 }
@@ -534,20 +546,23 @@ const getStaffInitials = (name: string | undefined): string => {
 // Get all tasks present in a specific cell (overlapping with that date)
 const getTasksInCell = (roomId: string, date: Date): HousekeepingTask[] => {
   const dateStr = formatDateISO(date)
-  const cellStart = new Date(dateStr + 'T00:00:00')
-  const cellEnd = new Date(dateStr + 'T23:59:59')
 
   return tasks.value.filter(t => {
     if (t.roomId !== roomId) return false
 
-    const taskStart = t.startDateTime ? new Date(t.startDateTime) : new Date(t.taskDate)
-    const taskEnd = t.endDateTime ? new Date(t.endDateTime) : new Date(t.taskDate)
+    // Compare using date strings to avoid timezone issues
+    const taskStartDate = t.startDateTime
+      ? t.startDateTime.split('T')[0] as string
+      : t.taskDate
+    const taskEndDate = t.endDateTime
+      ? t.endDateTime.split('T')[0] as string
+      : t.taskDate
 
-    return taskStart <= cellEnd && taskEnd >= cellStart
+    return taskStartDate <= dateStr && taskEndDate >= dateStr
   })
 }
 
-// Assign vertical tracks to stacked tasks
+// Assign vertical tracks to tasks in a cell — all tasks stack sequentially
 const calculateTaskTracks = (tasks: HousekeepingTask[], cellDate: Date): Map<string, number> => {
   const tracks = new Map<string, number>()
   const sortedTasks = [...tasks].sort((a, b) => {
@@ -556,37 +571,11 @@ const calculateTaskTracks = (tasks: HousekeepingTask[], cellDate: Date): Map<str
     return aStart.getTime() - bStart.getTime()
   })
 
-  for (const task of sortedTasks) {
-    let track = 0
-    const occupiedTracks = new Set<number>()
-
-    // Find which tracks are occupied by overlapping tasks
-    for (const [otherId, otherTrack] of tracks.entries()) {
-      const otherTask = tasks.find(t => t.id === otherId)
-      if (otherTask && tasksOverlap(task, otherTask)) {
-        occupiedTracks.add(otherTrack)
-      }
-    }
-
-    // Assign first available track
-    while (occupiedTracks.has(track)) {
-      track++
-    }
-
-    tracks.set(task.id, track)
-  }
+  sortedTasks.forEach((task, index) => {
+    tracks.set(task.id, index)
+  })
 
   return tracks
-}
-
-// Check if two tasks overlap in time
-const tasksOverlap = (task1: HousekeepingTask, task2: HousekeepingTask): boolean => {
-  const start1 = new Date(task1.startDateTime || task1.taskDate)
-  const end1 = new Date(task1.endDateTime || task1.taskDate)
-  const start2 = new Date(task2.startDateTime || task2.taskDate)
-  const end2 = new Date(task2.endDateTime || task2.taskDate)
-
-  return start1 <= end2 && end1 >= start2
 }
 
 // Get vertical offset for a task based on its assigned track
@@ -595,7 +584,7 @@ const getTaskVerticalOffset = (task: HousekeepingTask, roomId: string, date: Dat
   const tracks = calculateTaskTracks(cellTasks, date)
   const track = tracks.get(task.id) || 0
 
-  return track * (TASK_HEIGHT + TASK_SPACING)
+  return track * TASK_HEIGHT
 }
 
 const getStatusClass = (status: string): string => {
@@ -721,7 +710,7 @@ const handleDragEnterQuadrant = (date: Date, quadrant: number, roomId: string) =
   }
 }
 
-const getDragPreviewStyle = () => {
+const getDragPreviewStyle = (): Record<string, string | number> => {
   if (!dragPreview.value || !draggedTask.value) return {}
 
   const task = draggedTask.value
@@ -740,13 +729,13 @@ const getDragPreviewStyle = () => {
   return {
     position: 'absolute',
     width: `${previewWidth}px`,
-    left: `${0.25 * 16 + previewLeft}px`,
-    top: '0.25rem',
+    left: `${previewLeft}px`,
+    top: '0px',
     zIndex: 15,
     opacity: 0.5,
     border: '2px dashed var(--color-primary)',
     pointerEvents: 'none',
-    minHeight: `${TASK_HEIGHT}px`
+    height: `${TASK_HEIGHT}px`
   }
 }
 
@@ -789,8 +778,8 @@ const handleDrop = (event: DragEvent, date: Date, targetQuadrant: number) => {
     oldStart.setDate(oldStart.getDate() + daysDiff)
     oldEnd.setDate(oldEnd.getDate() + daysDiff)
 
-    const startDateStr = oldStart.toISOString().split('T')[0]
-    const endDateStr = oldEnd.toISOString().split('T')[0]
+    const startDateStr = oldStart.toISOString().split('T')[0]!
+    const endDateStr = oldEnd.toISOString().split('T')[0]!
 
     newStartDateTime = quadrantToDateTime(startDateStr, newStartQuadrant)
     newEndDateTime = quadrantToDateTime(endDateStr, newEndQuadrant)
@@ -1173,6 +1162,19 @@ onUnmounted(() => {
         <span class="codicon codicon-export"></span>
         Export
       </button>
+      <div style="flex-grow: 1;"></div>
+      <button
+        class="action-btn"
+        :class="{ active: roomSortBy === 'roomType' }"
+        :title="roomSortBy === 'roomNumber' ? 'Sort by room type' : 'Sort by room number'"
+        @click="roomSortBy = roomSortBy === 'roomNumber' ? 'roomType' : 'roomNumber'"
+      >
+        <span class="codicon codicon-list-filter"></span>
+        {{ roomSortBy === 'roomType' ? 'Type' : 'Room #' }}
+      </button>
+      <button class="action-btn">
+        <span class="codicon codicon-layers"></span>
+      </button>
     </div>
 
     <div v-if="loading" class="loading">Loading calendar...</div>
@@ -1189,6 +1191,7 @@ onUnmounted(() => {
             v-for="room in filteredRooms"
             :key="room.id"
             class="room-cell"
+            :style="{ height: getRowHeight(room.id), minHeight: getRowHeight(room.id) }"
           >
             <div class="room-number">{{ room.roomNumber }}</div>
             <div class="room-type">{{ room.roomType?.name }}</div>
@@ -1205,7 +1208,7 @@ onUnmounted(() => {
                 v-for="date in dates"
                 :key="date.toISOString()"
                 class="date-header"
-                :class="{ 'is-today': isTodayInVisibleRange(date) }"
+                :class="{ 'is-today': isTodayInVisibleRange(date), 'is-weekend': isWeekend(date) }"
               >
                 <div class="date-day">{{ getDayName(date) }}</div>
                 <div class="date-number">{{ date.getDate() }}</div>
@@ -1224,7 +1227,7 @@ onUnmounted(() => {
                 v-for="date in dates"
                 :key="`${room.id}-${date.toISOString()}`"
                 class="date-cell"
-                :class="{ 'is-today': isTodayInVisibleRange(date) }"
+                :class="{ 'is-today': isTodayInVisibleRange(date), 'is-weekend': isWeekend(date) }"
               >
                 <!-- Quadrant drop zones -->
                 <div
@@ -1289,7 +1292,7 @@ onUnmounted(() => {
 
               <div class="task-content">
                 <span class="task-icon">{{ getTaskTypeIcon(task.taskType) }}</span>
-                <span class="task-staff">{{ task.assignedUserName || 'Unassigned' }}</span>
+                <span class="task-staff">{{ task.assignedUserName || task.id }}</span>
               </div>
 
               <!-- Right resize handle -->
@@ -1309,7 +1312,7 @@ onUnmounted(() => {
             >
               <div class="task-content">
                 <span class="task-icon">{{ getTaskTypeIcon(pendingMove.task.taskType) }}</span>
-                <span class="task-staff">{{ pendingMove.task.assignedUserName || 'Unassigned' }}</span>
+                <span class="task-staff">{{ pendingMove.task.assignedUserName || pendingMove.task.id }}</span>
               </div>
             </div>
 
@@ -1328,7 +1331,7 @@ onUnmounted(() => {
             >
               <div class="task-content">
                 <span class="task-icon">{{ getTaskTypeIcon(resizePreview.task.taskType) }}</span>
-                <span class="task-staff">{{ resizePreview.task.assignedUserName || 'Unassigned' }}</span>
+                <span class="task-staff">{{ resizePreview.task.assignedUserName || resizePreview.task.id }}</span>
               </div>
             </div>
 
@@ -1602,6 +1605,12 @@ onUnmounted(() => {
   transform: translateY(0);
 }
 
+.action-btn.active {
+  background: var(--color-primary-soft, #e8f0fe);
+  border-color: var(--color-primary, #4a90d9);
+  color: var(--color-primary, #4a90d9);
+}
+
 .action-btn.primary {
   background: var(--vt-c-green-soft);
   border-color: var(--vt-c-green-dark);
@@ -1842,35 +1851,6 @@ onUnmounted(() => {
   overflow-x: visible;
   background: var(--color-background);
   will-change: transform;
-  /* Grid skeleton pattern */
-  background-image:
-    /* Vertical lines every 100px */
-    repeating-linear-gradient(
-      to right,
-      transparent 0,
-      transparent 99px,
-      var(--color-border) 99px,
-      var(--color-border) 100px
-    ),
-    /* Horizontal line for header at 4rem */
-    linear-gradient(
-      to bottom,
-      transparent 0,
-      transparent calc(4rem - 1px),
-      var(--color-border) calc(4rem - 1px),
-      var(--color-border) 4rem,
-      transparent 4rem
-    ),
-    /* Horizontal lines for rows every 3rem starting after header */
-    repeating-linear-gradient(
-      to bottom,
-      transparent 0,
-      transparent calc(3rem - 1px),
-      var(--color-border) calc(3rem - 1px),
-      var(--color-border) 3rem
-    );
-  background-position: 0 0, 0 0, 0 4rem;
-  background-size: 100% 100%, 100% 100%, 100% 100%;
 }
 
 .dates-section.scrolling {
@@ -1894,7 +1874,6 @@ onUnmounted(() => {
 .dates-row {
   display: flex;
   border-bottom: 1px solid var(--color-border);
-  min-height: 3rem;
   align-items: flex-start;
   overflow: visible;
   position: relative;
@@ -1916,6 +1895,10 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   justify-content: center;
+}
+
+.date-header.is-weekend {
+  background: rgba(128, 128, 128, 0.06);
 }
 
 .date-header.is-today {
@@ -1955,7 +1938,6 @@ onUnmounted(() => {
   background: var(--color-background-soft);
   border-bottom: 1px solid var(--color-border);
   border-right: 1px solid var(--color-border);
-  min-height: 3rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -1988,9 +1970,9 @@ onUnmounted(() => {
   width: 100px;
   min-width: 100px;
   max-width: 100px;
-  padding: 0.25rem;
+  padding: 0;
   border-right: 1px solid var(--color-border);
-  min-height: 3rem;
+  height: 100%;
   overflow: visible;
   position: relative;
 }
@@ -2018,6 +2000,10 @@ onUnmounted(() => {
 .quadrant-zone.drop-target:hover {
   background: var(--color-primary-light);
   opacity: 0.25;
+}
+
+.date-cell.is-weekend {
+  background: rgba(128, 128, 128, 0.04);
 }
 
 .date-cell.is-today {
@@ -2119,16 +2105,18 @@ onUnmounted(() => {
 }
 
 .task-block {
-  padding: 0.3rem 0.4rem;
-  border-radius: 3px;
+  padding: 0 0.4rem;
+  border-radius: 0;
   font-size: 0.7rem;
   cursor: move;
   transition: all 0.15s;
   border-left: 2px solid transparent;
-  line-height: 1.2;
+  line-height: 24px;
   pointer-events: all;
   z-index: 10;
   position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 /* Resize handles */
@@ -2273,6 +2261,7 @@ onUnmounted(() => {
   gap: 0.3rem;
   width: 100%;
   overflow: hidden;
+  height: 100%;
 }
 
 .task-icon {
