@@ -5,6 +5,7 @@ import { Staff } from './Staff.js';
 @Table({
   tableName: 'tasks',
   timestamps: true,
+  underscored: true,
 })
 export class Task extends Model {
   @Column({
@@ -17,25 +18,25 @@ export class Task extends Model {
   @ForeignKey(() => Room)
   @Column({
     type: DataType.INTEGER,
-    allowNull: false,
+    allowNull: true,
     field: 'room_id',
   })
-  declare roomId: number;
+  declare roomId: number | null;
 
   @ForeignKey(() => Staff)
   @Column({
     type: DataType.INTEGER,
-    allowNull: false,
-    field: 'assigned_staff_id',
+    allowNull: true,
+    field: 'staff_id',
   })
-  declare assignedStaffId: number;
+  declare staffId: number | null;
 
   @Column({
     type: DataType.DATEONLY,
-    allowNull: false,
+    allowNull: true,
     field: 'task_date',
   })
-  declare taskDate: Date;
+  declare taskDate: Date | null;
 
   @Column({
     type: DataType.DATE,
@@ -93,24 +94,17 @@ export class Task extends Model {
   })
   declare completedAt: Date | null;
 
-  @Column({
-    type: DataType.DATE,
-    allowNull: false,
-    field: 'created_at',
-  })
+  // Timestamps handled automatically by Sequelize
+  @Column({ type: DataType.DATE, field: 'created_at' })
   declare createdAt: Date;
 
-  @Column({
-    type: DataType.DATE,
-    allowNull: false,
-    field: 'updated_at',
-  })
+  @Column({ type: DataType.DATE, field: 'updated_at' })
   declare updatedAt: Date;
 
   // Associations
   @BelongsTo(() => Room, 'room_id')
   declare room?: Room;
 
-  @BelongsTo(() => Staff, 'assigned_staff_id')
+  @BelongsTo(() => Staff, 'staff_id')
   declare assignedStaff?: Staff;
 }

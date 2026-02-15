@@ -7,6 +7,7 @@ import { RoomOccupancy } from './RoomOccupancy.js';
 @Table({
   tableName: 'rooms',
   timestamps: true,
+  underscored: true,
 })
 export class Room extends Model {
   @Column({
@@ -51,18 +52,11 @@ export class Room extends Model {
   })
   declare notes: string | null;
 
-  @Column({
-    type: DataType.DATE,
-    allowNull: false,
-    field: 'created_at',
-  })
+  // Timestamps handled automatically by Sequelize
+  @Column({ type: DataType.DATE, field: 'created_at' })
   declare createdAt: Date;
 
-  @Column({
-    type: DataType.DATE,
-    allowNull: false,
-    field: 'updated_at',
-  })
+  @Column({ type: DataType.DATE, field: 'updated_at' })
   declare updatedAt: Date;
 
   // Associations

@@ -15,6 +15,11 @@ await fastify.register(cors, {
   credentials: true,
 });
 
+// Health check endpoint
+fastify.get('/health', async () => {
+  return { status: 'ok', timestamp: new Date().toISOString() };
+});
+
 // Register all routes
 await registerRoutes(fastify);
 

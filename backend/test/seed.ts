@@ -289,7 +289,7 @@ async function seed() {
             task_type: 'cleaning'
           },
           defaults: {
-            assigned_staff_id: housekeeper.id,
+            staff_id: housekeeper.id,
             start_date_time: new Date(),
             end_date_time: new Date(Date.now() + 2 * 60 * 60 * 1000),
             priority: 'high',
@@ -304,7 +304,7 @@ async function seed() {
             task_type: 'cleaning'
           },
           defaults: {
-            assigned_staff_id: housekeeper.id,
+            staff_id: housekeeper.id,
             start_date_time: new Date(),
             end_date_time: new Date(Date.now() + 2 * 60 * 60 * 1000),
             priority: 'medium',

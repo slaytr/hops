@@ -9,6 +9,7 @@ import ratePlansRoutes from "./rate-plans.js";
 import roomRatesRoutes from "./room-rates.js";
 import reservationsRoutes from "./reservations.js";
 import roomOccupanciesRoutes from "./room-occupancies.js";
+import seedRoutes from "./seed.js";
 
 export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(usersRoutes);
@@ -21,4 +22,5 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(roomRatesRoutes);
   await fastify.register(reservationsRoutes);
   await fastify.register(roomOccupanciesRoutes);
+  await fastify.register(seedRoutes);
 }

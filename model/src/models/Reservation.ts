@@ -9,6 +9,7 @@ import { RoomOccupancy } from './RoomOccupancy.js';
 @Table({
   tableName: 'reservations',
   timestamps: true,
+  underscored: true,
 })
 export class Reservation extends Model {
   @Column({
@@ -187,18 +188,11 @@ export class Reservation extends Model {
   })
   declare cancelledAt: Date | null;
 
-  @Column({
-    type: DataType.DATE,
-    allowNull: false,
-    field: 'created_at',
-  })
+  // Timestamps handled automatically by Sequelize
+  @Column({ type: DataType.DATE, field: 'created_at' })
   declare createdAt: Date;
 
-  @Column({
-    type: DataType.DATE,
-    allowNull: false,
-    field: 'updated_at',
-  })
+  @Column({ type: DataType.DATE, field: 'updated_at' })
   declare updatedAt: Date;
 
   // Associations

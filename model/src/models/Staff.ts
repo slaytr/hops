@@ -6,6 +6,7 @@ import { Reservation } from './Reservation.js';
 @Table({
   tableName: 'staff',
   timestamps: true,
+  underscored: true,
 })
 export class Staff extends Model {
   @Column({
@@ -83,25 +84,18 @@ export class Staff extends Model {
   })
   declare notes: string | null;
 
-  @Column({
-    type: DataType.DATE,
-    allowNull: false,
-    field: 'created_at',
-  })
+  // Timestamps handled automatically by Sequelize
+  @Column({ type: DataType.DATE, field: 'created_at' })
   declare createdAt: Date;
 
-  @Column({
-    type: DataType.DATE,
-    allowNull: false,
-    field: 'updated_at',
-  })
+  @Column({ type: DataType.DATE, field: 'updated_at' })
   declare updatedAt: Date;
 
   // Associations
   @BelongsTo(() => User, 'user_id')
   declare user?: User;
 
-  @HasMany(() => Task, 'assigned_staff_id')
+  @HasMany(() => Task, 'staff_id')
   declare tasks?: Task[];
 
   @HasMany(() => Reservation, 'booked_by_staff_id')

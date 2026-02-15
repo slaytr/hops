@@ -49,7 +49,8 @@
       "Bash(grep:*)",
       "Bash(npm start)",
       "Bash(netstat:*)",
-      "Bash(tsx test:*)"
+      "Bash(tsx test:*)",
+      "Bash(test:*)"
     ]
   }
 }

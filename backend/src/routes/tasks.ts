@@ -21,12 +21,6 @@ export default async function tasksRoutes(fastify: FastifyInstance) {
 
   // Create new task
   fastify.post<{ Body: CreateTaskData }>("/tasks", async (request, reply) => {
-    const { roomId, assignedStaffId } = request.body;
-
-    if (!roomId || !assignedStaffId) {
-      return reply.status(400).send({ error: "Room and assigned staff are required" });
-    }
-
     try {
       const task = await tasksService.create(request.body);
       return { success: true, task };

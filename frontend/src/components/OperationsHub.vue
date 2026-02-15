@@ -31,6 +31,14 @@ interface Room {
   status: string
 }
 
+interface Staff {
+  id: string
+  firstName: string
+  lastName: string
+  role: string
+  status: string
+}
+
 const rooms = ref<Room[]>([])
 const tasks = ref<HousekeepingTask[]>([])
 const loading = ref(false)
@@ -47,9 +55,22 @@ const containerWidth = ref(0)
 const ROOM_COLUMN_WIDTH = 100
 const DATE_COLUMN_WIDTH = 100
 
+// Quadrant system constants
+const QUADRANT_WIDTH = 25 // px
+const QUADRANTS_PER_CELL = 4
+const TASK_HEIGHT = 24 // px
+const TASK_SPACING = 2 // px
+const BASE_ROW_HEIGHT = 48 // px
+
 // Drag and drop state
 const draggedTask = ref<HousekeepingTask | null>(null)
 const draggedFromDate = ref<string | null>(null)
+const dragPreview = ref<{
+  task: HousekeepingTask
+  targetDate: Date
+  targetQuadrant: number
+  roomId: string
+} | null>(null)
 const pendingMove = ref<{
   task: HousekeepingTask
   fromDate: string
@@ -88,6 +109,17 @@ const datePickerInput = ref<HTMLInputElement | null>(null)
 // Calendar view type
 const calendarViewType = ref<'tasklist' | 'calendar'>('tasklist')
 const viewDropdownOpen = ref(false)
+
+// Add task modal
+const showAddTaskModal = ref(false)
+const staff = ref<Staff[]>([])
+const newTask = ref({
+  taskType: 'cleaning' as 'cleaning' | 'maintenance' | 'inspection' | 'turndown',
+  roomId: '',
+  staffId: '',
+  startDateTime: '',
+  endDateTime: ''
+})
 
 const dates = computed(() => {
   const dateArray: Date[] = []
@@ -147,6 +179,37 @@ const currentYear = computed(() => {
   return startDate.value.getFullYear()
 })
 
+// Calculate row height based on maximum task stacking
+const rowHeights = computed(() => {
+  const heights = new Map<string, number>()
+
+  for (const room of filteredRooms.value) {
+    let maxTracks = 0
+
+    // Check all visible dates for this room
+    for (const date of dates.value) {
+      const cellTasks = getTasksInCell(room.id, date)
+      if (cellTasks.length > 0) {
+        const tracks = calculateTaskTracks(cellTasks, date)
+        maxTracks = Math.max(maxTracks, tracks.size)
+      }
+    }
+
+    // Calculate height: base + additional height for stacked tasks
+    const height = maxTracks > 0
+      ? BASE_ROW_HEIGHT + ((maxTracks - 1) * (TASK_HEIGHT + TASK_SPACING))
+      : BASE_ROW_HEIGHT
+
+    heights.set(room.id, height)
+  }
+
+  return heights
+})
+
+const getRowHeight = (roomId: string): string => {
+  return `${rowHeights.value.get(roomId) || BASE_ROW_HEIGHT}px`
+}
+
 const fetchRooms = async () => {
   try {
     const response = await fetch(`${API_URL}/rooms`)
@@ -167,9 +230,83 @@ const fetchTasks = async () => {
       `${API_URL}/tasks?startDate=${rangeStart}&endDate=${rangeEnd}`
     )
     const data = await response.json()
-    tasks.value = data.tasks
+    tasks.value = data.tasks.map(migrateTaskToQuadrants)
   } catch (e) {
     error.value = 'Failed to fetch tasks'
+  }
+}
+
+const fetchStaff = async () => {
+  try {
+    const response = await fetch(`${API_URL}/staff`)
+    const data = await response.json()
+    staff.value = data.staff
+  } catch (e) {
+    console.error('Failed to fetch staff:', e)
+  }
+}
+
+const openAddTaskModal = () => {
+  showAddTaskModal.value = true
+  fetchStaff()
+  // Reset form with defaults
+  newTask.value = {
+    taskType: 'cleaning',
+    roomId: '',
+    staffId: '',
+    startDateTime: '',
+    endDateTime: ''
+  }
+}
+
+const closeAddTaskModal = () => {
+  showAddTaskModal.value = false
+}
+
+const createTask = async () => {
+  try {
+    const taskData: any = {
+      taskType: newTask.value.taskType,
+      priority: 'medium',
+      status: 'pending'
+    }
+
+    // Add room if selected
+    if (newTask.value.roomId) {
+      taskData.roomId = newTask.value.roomId
+    }
+
+    // Add staff if selected
+    if (newTask.value.staffId) {
+      taskData.staffId = newTask.value.staffId
+    }
+
+    // Add dates if provided
+    if (newTask.value.startDateTime && newTask.value.endDateTime) {
+      taskData.startDateTime = new Date(newTask.value.startDateTime).toISOString()
+      taskData.endDateTime = new Date(newTask.value.endDateTime).toISOString()
+      taskData.taskDate = taskData.startDateTime.split('T')[0]
+    }
+    // If no dates/room provided, task will be created without them and can be dragged onto calendar later
+
+    const response = await fetch(`${API_URL}/tasks`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(taskData)
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || 'Failed to create task')
+    }
+
+    await fetchTasks()
+    closeAddTaskModal()
+  } catch (e: any) {
+    console.error('Failed to create task:', e)
+    error.value = e.message || 'Failed to create task'
   }
 }
 
@@ -253,6 +390,91 @@ const getTaskDateRange = (task: HousekeepingTask): Date[] => {
   return dates
 }
 
+// Convert DateTime hour to quadrant number (1-4)
+const getQuadrantFromDateTime = (dateTime: string): number => {
+  const hour = new Date(dateTime).getUTCHours()
+  if (hour < 9) return 1
+  if (hour < 15) return 2
+  if (hour < 20) return 3
+  return 4
+}
+
+// Convert quadrant number to DateTime string
+const quadrantToDateTime = (dateStr: string, quadrant: number): string => {
+  const hours = [6, 12, 18, 21]
+  return `${dateStr}T${hours[quadrant - 1].toString().padStart(2, '0')}:00:00Z`
+}
+
+// Calculate task width based on quadrant span
+const getTaskQuadrantWidth = (task: HousekeepingTask): number => {
+  if (!task.startDateTime || !task.endDateTime) {
+    return DATE_COLUMN_WIDTH
+  }
+
+  const start = new Date(task.startDateTime)
+  const end = new Date(task.endDateTime)
+
+  const startDate = new Date(start.toISOString().split('T')[0])
+  const endDate = new Date(end.toISOString().split('T')[0])
+
+  const startQuadrant = getQuadrantFromDateTime(task.startDateTime)
+  const endQuadrant = getQuadrantFromDateTime(task.endDateTime)
+
+  const daysBetween = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+
+  if (daysBetween === 0) {
+    // Same day: width = (endQuadrant - startQuadrant + 1) × 25px
+    return (endQuadrant - startQuadrant + 1) * QUADRANT_WIDTH
+  }
+
+  // Multi-day: calculate total quadrants across all days
+  const startDayQuadrants = QUADRANTS_PER_CELL - startQuadrant + 1
+  const endDayQuadrants = endQuadrant
+  const middleDays = Math.max(0, daysBetween - 1)
+  const totalQuadrants = startDayQuadrants + (middleDays * QUADRANTS_PER_CELL) + endDayQuadrants
+
+  return totalQuadrants * QUADRANT_WIDTH
+}
+
+// Calculate left offset within cell based on start quadrant
+const getTaskQuadrantOffset = (task: HousekeepingTask): number => {
+  if (!task.startDateTime) return 0
+  const startQuadrant = getQuadrantFromDateTime(task.startDateTime)
+  return (startQuadrant - 1) * QUADRANT_WIDTH
+}
+
+// Migrate legacy tasks to quadrant format
+const migrateTaskToQuadrants = (task: HousekeepingTask): HousekeepingTask => {
+  if (!task.startDateTime || !task.endDateTime) {
+    // Legacy task with only taskDate
+    return {
+      ...task,
+      startDateTime: `${task.taskDate}T06:00:00Z`,
+      endDateTime: `${task.taskDate}T21:00:00Z`
+    }
+  }
+
+  // Check if already quadrant-aligned
+  const startHour = new Date(task.startDateTime).getUTCHours()
+  const isQuadrantAligned = [6, 12, 18, 21].includes(startHour)
+
+  if (!isQuadrantAligned) {
+    // Round to nearest quadrant
+    const quadrant = getQuadrantFromDateTime(task.startDateTime)
+    const endQuadrant = getQuadrantFromDateTime(task.endDateTime)
+    const startDate = task.startDateTime.split('T')[0]
+    const endDate = task.endDateTime.split('T')[0]
+
+    return {
+      ...task,
+      startDateTime: quadrantToDateTime(startDate, quadrant),
+      endDateTime: quadrantToDateTime(endDate, endQuadrant)
+    }
+  }
+
+  return task
+}
+
 const isMultiDayTask = (task: HousekeepingTask): boolean => {
   if (!task.startDateTime || !task.endDateTime) return false
   const start = task.startDateTime.split('T')[0]
@@ -268,20 +490,21 @@ const taskStartsOnDate = (task: HousekeepingTask, date: Date): boolean => {
   return dateStr === start
 }
 
-const getTaskStyle = (task: HousekeepingTask) => {
-  if (!isMultiDayTask(task)) {
-    return {}
-  }
+const getTaskStyle = (task: HousekeepingTask, roomId: string, startDate: Date) => {
+  const width = getTaskQuadrantWidth(task)
+  const left = getTaskQuadrantOffset(task)
+  const verticalOffset = getTaskVerticalOffset(task, roomId, startDate)
 
-  const dateRange = getTaskDateRange(task)
-  const spanDays = dateRange.length
-  const width = spanDays * DATE_COLUMN_WIDTH
+  // All tasks use absolute positioning to overlay the quadrant zones
+  const baseTop = 0.25 * 16 // 0.25rem padding
 
   return {
     position: 'absolute',
     width: `${width}px`,
-    zIndex: 10,
-    minHeight: '2.5rem'
+    left: `${0.25 * 16 + left}px`, // Add cell padding to left offset
+    top: `${baseTop + verticalOffset}px`,
+    zIndex: isMultiDayTask(task) ? 10 : 5,
+    minHeight: `${TASK_HEIGHT}px`
   }
 }
 
@@ -306,6 +529,73 @@ const getStaffInitials = (name: string | undefined): string => {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
   }
   return name.substring(0, 2).toUpperCase()
+}
+
+// Get all tasks present in a specific cell (overlapping with that date)
+const getTasksInCell = (roomId: string, date: Date): HousekeepingTask[] => {
+  const dateStr = formatDateISO(date)
+  const cellStart = new Date(dateStr + 'T00:00:00')
+  const cellEnd = new Date(dateStr + 'T23:59:59')
+
+  return tasks.value.filter(t => {
+    if (t.roomId !== roomId) return false
+
+    const taskStart = t.startDateTime ? new Date(t.startDateTime) : new Date(t.taskDate)
+    const taskEnd = t.endDateTime ? new Date(t.endDateTime) : new Date(t.taskDate)
+
+    return taskStart <= cellEnd && taskEnd >= cellStart
+  })
+}
+
+// Assign vertical tracks to stacked tasks
+const calculateTaskTracks = (tasks: HousekeepingTask[], cellDate: Date): Map<string, number> => {
+  const tracks = new Map<string, number>()
+  const sortedTasks = [...tasks].sort((a, b) => {
+    const aStart = new Date(a.startDateTime || a.taskDate)
+    const bStart = new Date(b.startDateTime || b.taskDate)
+    return aStart.getTime() - bStart.getTime()
+  })
+
+  for (const task of sortedTasks) {
+    let track = 0
+    const occupiedTracks = new Set<number>()
+
+    // Find which tracks are occupied by overlapping tasks
+    for (const [otherId, otherTrack] of tracks.entries()) {
+      const otherTask = tasks.find(t => t.id === otherId)
+      if (otherTask && tasksOverlap(task, otherTask)) {
+        occupiedTracks.add(otherTrack)
+      }
+    }
+
+    // Assign first available track
+    while (occupiedTracks.has(track)) {
+      track++
+    }
+
+    tracks.set(task.id, track)
+  }
+
+  return tracks
+}
+
+// Check if two tasks overlap in time
+const tasksOverlap = (task1: HousekeepingTask, task2: HousekeepingTask): boolean => {
+  const start1 = new Date(task1.startDateTime || task1.taskDate)
+  const end1 = new Date(task1.endDateTime || task1.taskDate)
+  const start2 = new Date(task2.startDateTime || task2.taskDate)
+  const end2 = new Date(task2.endDateTime || task2.taskDate)
+
+  return start1 <= end2 && end1 >= start2
+}
+
+// Get vertical offset for a task based on its assigned track
+const getTaskVerticalOffset = (task: HousekeepingTask, roomId: string, date: Date): number => {
+  const cellTasks = getTasksInCell(roomId, date)
+  const tracks = calculateTaskTracks(cellTasks, date)
+  const track = tracks.get(task.id) || 0
+
+  return track * (TASK_HEIGHT + TASK_SPACING)
 }
 
 const getStatusClass = (status: string): string => {
@@ -417,34 +707,71 @@ const handleDragStart = (task: HousekeepingTask, date: Date) => {
 
   draggedTask.value = task
   draggedFromDate.value = formatDateISO(date)
+  dragPreview.value = null
+}
+
+const handleDragEnterQuadrant = (date: Date, quadrant: number, roomId: string) => {
+  if (!draggedTask.value || !draggedFromDate.value) return
+
+  dragPreview.value = {
+    task: draggedTask.value,
+    targetDate: date,
+    targetQuadrant: quadrant,
+    roomId
+  }
+}
+
+const getDragPreviewStyle = () => {
+  if (!dragPreview.value || !draggedTask.value) return {}
+
+  const task = draggedTask.value
+  const targetQuadrant = dragPreview.value.targetQuadrant
+
+  // Calculate what the new position would be
+  const oldQuadrant = task.startDateTime
+    ? getQuadrantFromDateTime(task.startDateTime)
+    : 1
+  const quadrantDiff = targetQuadrant - oldQuadrant
+
+  // Calculate task width and position at target
+  let previewWidth = getTaskQuadrantWidth(task)
+  let previewLeft = (targetQuadrant - 1) * QUADRANT_WIDTH
+
+  return {
+    position: 'absolute',
+    width: `${previewWidth}px`,
+    left: `${0.25 * 16 + previewLeft}px`,
+    top: '0.25rem',
+    zIndex: 15,
+    opacity: 0.5,
+    border: '2px dashed var(--color-primary)',
+    pointerEvents: 'none',
+    minHeight: `${TASK_HEIGHT}px`
+  }
 }
 
 const handleDragOver = (event: DragEvent) => {
   event.preventDefault()
 }
 
-const handleDrop = (event: DragEvent, date: Date) => {
+const handleDrop = (event: DragEvent, date: Date, targetQuadrant: number) => {
   event.preventDefault()
 
   if (!draggedTask.value || !draggedFromDate.value) return
 
   const newDate = formatDateISO(date)
 
-  // Don't create pending move if dropping on same date
-  if (newDate === draggedFromDate.value) {
-    draggedTask.value = null
-    draggedFromDate.value = null
-    return
-  }
-
-  // Calculate date offset
+  // Calculate offsets
   const oldDate = new Date(draggedFromDate.value)
   const newStartDate = new Date(newDate)
-  const daysDiff = Math.floor(
-    (newStartDate.getTime() - oldDate.getTime()) / (1000 * 60 * 60 * 24)
-  )
+  const daysDiff = Math.floor((newStartDate.getTime() - oldDate.getTime()) / (1000 * 60 * 60 * 24))
 
-  // For multi-day tasks, shift both start and end by same offset
+  const oldQuadrant = draggedTask.value.startDateTime
+    ? getQuadrantFromDateTime(draggedTask.value.startDateTime)
+    : 1
+  const quadrantDiff = targetQuadrant - oldQuadrant
+
+  // Calculate new start and end DateTimes
   let newStartDateTime: string
   let newEndDateTime: string
 
@@ -452,18 +779,28 @@ const handleDrop = (event: DragEvent, date: Date) => {
     const oldStart = new Date(draggedTask.value.startDateTime)
     const oldEnd = new Date(draggedTask.value.endDateTime)
 
+    const oldStartQuadrant = getQuadrantFromDateTime(draggedTask.value.startDateTime)
+    const oldEndQuadrant = getQuadrantFromDateTime(draggedTask.value.endDateTime)
+
+    const newStartQuadrant = Math.max(1, Math.min(4, oldStartQuadrant + quadrantDiff))
+    const newEndQuadrant = Math.max(1, Math.min(4, oldEndQuadrant + quadrantDiff))
+
+    // Shift dates
     oldStart.setDate(oldStart.getDate() + daysDiff)
     oldEnd.setDate(oldEnd.getDate() + daysDiff)
 
-    newStartDateTime = oldStart.toISOString()
-    newEndDateTime = oldEnd.toISOString()
+    const startDateStr = oldStart.toISOString().split('T')[0]
+    const endDateStr = oldEnd.toISOString().split('T')[0]
+
+    newStartDateTime = quadrantToDateTime(startDateStr, newStartQuadrant)
+    newEndDateTime = quadrantToDateTime(endDateStr, newEndQuadrant)
   } else {
-    // Single-day task: convert to new format
-    newStartDateTime = new Date(newDate + 'T12:00:00').toISOString()
-    newEndDateTime = new Date(newDate + 'T23:59:59').toISOString()
+    // Single-day task: convert to quadrant-based format
+    newStartDateTime = quadrantToDateTime(newDate, targetQuadrant)
+    newEndDateTime = quadrantToDateTime(newDate, targetQuadrant)
   }
 
-  // Create pending move for confirmation
+  // Create pending move for user confirmation
   pendingMove.value = {
     task: draggedTask.value,
     fromDate: draggedFromDate.value,
@@ -474,6 +811,7 @@ const handleDrop = (event: DragEvent, date: Date) => {
 
   draggedTask.value = null
   draggedFromDate.value = null
+  dragPreview.value = null
 }
 
 const confirmMove = async () => {
@@ -513,6 +851,15 @@ const cancelMove = () => {
   pendingMove.value = null
 }
 
+const handleDragEnd = () => {
+  if (!pendingMove.value) {
+    // Drag was cancelled without a drop
+    draggedTask.value = null
+    draggedFromDate.value = null
+    dragPreview.value = null
+  }
+}
+
 // Resize handlers
 const handleResizeStart = (event: MouseEvent, task: HousekeepingTask, edge: 'start' | 'end') => {
   event.stopPropagation()
@@ -529,32 +876,24 @@ const handleResizeStart = (event: MouseEvent, task: HousekeepingTask, edge: 'sta
   }
 }
 
-const handleResizeMove = (event: MouseEvent, date: Date) => {
+const handleResizeMove = (event: MouseEvent, date: Date, targetQuadrant: number) => {
   if (!resizingTask.value || !resizeEdge.value) return
 
   const newDateStr = formatDateISO(date)
   const task = resizingTask.value
 
-  const currentStart = task.startDateTime || `${task.taskDate}T12:00:00`
-  const currentEnd = task.endDateTime || `${task.taskDate}T23:59:59`
+  const currentStart = task.startDateTime || `${task.taskDate}T06:00:00`
+  const currentEnd = task.endDateTime || `${task.taskDate}T21:00:00`
 
   let newStart = currentStart
   let newEnd = currentEnd
 
   if (resizeEdge.value === 'start') {
-    // Resizing from the start (left edge)
-    newStart = new Date(newDateStr + 'T12:00:00').toISOString()
-    // Don't allow start to be after end
-    if (new Date(newStart) >= new Date(currentEnd)) {
-      return
-    }
+    newStart = quadrantToDateTime(newDateStr, targetQuadrant)
+    if (new Date(newStart) >= new Date(currentEnd)) return
   } else {
-    // Resizing from the end (right edge)
-    newEnd = new Date(newDateStr + 'T23:59:59').toISOString()
-    // Don't allow end to be before start
-    if (new Date(newEnd) <= new Date(currentStart)) {
-      return
-    }
+    newEnd = quadrantToDateTime(newDateStr, targetQuadrant)
+    if (new Date(newEnd) <= new Date(currentStart)) return
   }
 
   resizePreview.value = {
@@ -611,11 +950,11 @@ const cancelResize = () => {
 const getResizePreviewWidth = (preview: typeof resizePreview.value) => {
   if (!preview) return DATE_COLUMN_WIDTH
 
-  const start = new Date(preview.newStartDateTime)
-  const end = new Date(preview.newEndDateTime)
-  const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-
-  return Math.max(1, daysDiff) * DATE_COLUMN_WIDTH
+  return getTaskQuadrantWidth({
+    ...preview.task,
+    startDateTime: preview.newStartDateTime,
+    endDateTime: preview.newEndDateTime
+  })
 }
 
 const getConfirmButtonsPosition = () => {
@@ -812,6 +1151,30 @@ onUnmounted(() => {
       </div>
     </div>
 
+    <!-- Task Management Actions -->
+    <div class="task-actions">
+      <button class="action-btn primary" @click="openAddTaskModal">
+        <span class="codicon codicon-add"></span>
+        Task
+      </button>
+      <button class="action-btn">
+        <span class="codicon codicon-person"></span>
+        Bulk Assign
+      </button>
+      <button class="action-btn">
+        <span class="codicon codicon-copy"></span>
+        Duplicate Tasks
+      </button>
+      <button class="action-btn">
+        <span class="codicon codicon-file-code"></span>
+        Task Templates
+      </button>
+      <button class="action-btn">
+        <span class="codicon codicon-export"></span>
+        Export
+      </button>
+    </div>
+
     <div v-if="loading" class="loading">Loading calendar...</div>
     <p v-if="error" class="error">{{ error }}</p>
 
@@ -855,16 +1218,41 @@ onUnmounted(() => {
               v-for="room in filteredRooms"
               :key="room.id"
               class="dates-row"
+              :style="{ height: getRowHeight(room.id), minHeight: getRowHeight(room.id) }"
             >
               <div
                 v-for="date in dates"
                 :key="`${room.id}-${date.toISOString()}`"
                 class="date-cell"
-                :class="{ 'is-today': isTodayInVisibleRange(date), 'drop-target': draggedTask !== null }"
-                @dragover="handleDragOver"
-                @drop="handleDrop($event, date)"
-                @mouseenter="() => { if (resizingTask) handleResizeMove($event as MouseEvent, date) }"
+                :class="{ 'is-today': isTodayInVisibleRange(date) }"
               >
+                <!-- Quadrant drop zones -->
+                <div
+                  v-for="quadrant in [1, 2, 3, 4]"
+                  :key="`${room.id}-${date.toISOString()}-q${quadrant}`"
+                  class="quadrant-zone"
+                  :class="{ 'drop-target': draggedTask !== null }"
+                  @dragover="handleDragOver"
+                  @dragenter="() => handleDragEnterQuadrant(date, quadrant, room.id)"
+                  @drop="handleDrop($event, date, quadrant)"
+                  @mouseenter="(e) => { if (resizingTask) handleResizeMove(e as MouseEvent, date, quadrant) }"
+                ></div>
+
+                <!-- Drag preview -->
+                <div
+                  v-if="dragPreview && dragPreview.roomId === room.id && formatDateISO(dragPreview.targetDate) === formatDateISO(date)"
+                  class="task-block task-drag-preview"
+                  :class="getStatusClass(dragPreview.task.status)"
+                  :style="getDragPreviewStyle()"
+                >
+                  <div class="task-content">
+                    <div class="task-header">
+                      <span class="task-icon">{{ getTaskTypeIcon(dragPreview.task.taskType) }}</span>
+                      <span class="task-staff">{{ dragPreview.task.assignedUserName }}</span>
+                    </div>
+                    <div class="task-type">{{ dragPreview.task.taskType }}</div>
+                  </div>
+                </div>
             <!-- Regular tasks -->
             <div
               v-for="task in getTasksStartingOnDate(room.id, date)"
@@ -872,12 +1260,17 @@ onUnmounted(() => {
               class="task-block"
               :class="[
                 getStatusClass(task.status),
-                { 'multi-day': isMultiDayTask(task), 'resizing': resizingTask?.id === task.id }
+                {
+                  'multi-day': isMultiDayTask(task),
+                  'resizing': resizingTask?.id === task.id,
+                  'dragging': draggedTask?.id === task.id
+                }
               ]"
-              :style="getTaskStyle(task)"
+              :style="getTaskStyle(task, room.id, date)"
               :title="`${task.assignedUserName} - ${task.taskType} - ${task.status}`"
               draggable="true"
               @dragstart="handleDragStart(task, date)"
+              @dragend="handleDragEnd"
               @mouseenter="(e) => {
                 const target = e.currentTarget as HTMLElement
                 target.querySelectorAll('.resize-handle').forEach(h => (h as HTMLElement).style.opacity = '1')
@@ -895,14 +1288,8 @@ onUnmounted(() => {
               ></div>
 
               <div class="task-content">
-                <div class="task-header">
-                  <span class="task-icon">{{ getTaskTypeIcon(task.taskType) }}</span>
-                  <span class="task-staff">{{ task.assignedUserName }}</span>
-                </div>
-                <div class="task-type">{{ task.taskType }}</div>
-                <div v-if="isMultiDayTask(task)" class="task-duration">
-                  {{ getTaskDurationDisplay(task) }}
-                </div>
+                <span class="task-icon">{{ getTaskTypeIcon(task.taskType) }}</span>
+                <span class="task-staff">{{ task.assignedUserName || 'Unassigned' }}</span>
               </div>
 
               <!-- Right resize handle -->
@@ -921,11 +1308,8 @@ onUnmounted(() => {
               :title="`${pendingMove.task.assignedUserName} - ${pendingMove.task.taskType} - Pending move`"
             >
               <div class="task-content">
-                <div class="task-header">
-                  <span class="task-icon">{{ getTaskTypeIcon(pendingMove.task.taskType) }}</span>
-                  <span class="task-staff">{{ pendingMove.task.assignedUserName }}</span>
-                </div>
-                <div class="task-type">{{ pendingMove.task.taskType }}</div>
+                <span class="task-icon">{{ getTaskTypeIcon(pendingMove.task.taskType) }}</span>
+                <span class="task-staff">{{ pendingMove.task.assignedUserName || 'Unassigned' }}</span>
               </div>
             </div>
 
@@ -943,17 +1327,11 @@ onUnmounted(() => {
               }"
             >
               <div class="task-content">
-                <div class="task-header">
-                  <span class="task-icon">{{ getTaskTypeIcon(resizePreview.task.taskType) }}</span>
-                  <span class="task-staff">{{ resizePreview.task.assignedUserName }}</span>
-                </div>
-                <div class="task-type">{{ resizePreview.task.taskType }}</div>
+                <span class="task-icon">{{ getTaskTypeIcon(resizePreview.task.taskType) }}</span>
+                <span class="task-staff">{{ resizePreview.task.assignedUserName || 'Unassigned' }}</span>
               </div>
             </div>
 
-                <div v-if="getTasksStartingOnDate(room.id, date).length === 0 && (!pendingMove || pendingMove.fromDate !== formatDateISO(date) || pendingMove.task.roomId !== room.id)" class="empty-cell">
-                  <!-- Empty cell -->
-                </div>
               </div>
             </div>
           </div>
@@ -1011,6 +1389,79 @@ onUnmounted(() => {
         </div>
         <div class="legend-item">
           <span>🛏️</span> Turndown
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Task Modal -->
+    <div v-if="showAddTaskModal" class="modal-overlay" @click.self="closeAddTaskModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3><span class="codicon codicon-add"></span> Add New Task</h3>
+          <button @click="closeAddTaskModal" class="modal-close">
+            <span class="codicon codicon-close"></span>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="task-type">Task Type <span class="required">*</span></label>
+            <select id="task-type" v-model="newTask.taskType" class="form-control">
+              <option value="cleaning">🧹 Cleaning</option>
+              <option value="maintenance">🔧 Maintenance</option>
+              <option value="inspection">🔍 Inspection</option>
+              <option value="turndown">🛏️ Turndown</option>
+            </select>
+          </div>
+
+          <div class="form-divider">
+            <span>All fields below are optional</span>
+          </div>
+
+          <div class="form-group">
+            <label for="room">Room</label>
+            <select id="room" v-model="newTask.roomId" class="form-control">
+              <option value="">Unassigned</option>
+              <option v-for="room in filteredRooms" :key="room.id" :value="room.id">
+                {{ room.roomNumber }} - {{ room.roomType?.name }}
+              </option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="staff">Staff</label>
+            <select id="staff" v-model="newTask.staffId" class="form-control">
+              <option value="">Unassigned</option>
+              <option v-for="member in staff" :key="member.id" :value="member.id">
+                {{ member.firstName }} {{ member.lastName }} - {{ member.role }}
+              </option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="start-datetime">Start Date & Time</label>
+            <input
+              id="start-datetime"
+              type="datetime-local"
+              v-model="newTask.startDateTime"
+              class="form-control"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="end-datetime">End Date & Time</label>
+            <input
+              id="end-datetime"
+              type="datetime-local"
+              v-model="newTask.endDateTime"
+              class="form-control"
+            />
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button @click="closeAddTaskModal" class="btn-secondary">Cancel</button>
+          <button @click="createTask" class="btn-primary">Create Task</button>
         </div>
       </div>
     </div>
@@ -1112,6 +1563,59 @@ onUnmounted(() => {
   border-radius: 6px;
   border: 1px solid var(--color-border);
   gap: 1rem;
+}
+
+.task-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  background: var(--color-background-soft);
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.action-btn:hover {
+  background: var(--color-background-mute);
+  border-color: var(--color-border-hover);
+  transform: translateY(-1px);
+}
+
+.action-btn:active {
+  transform: translateY(0);
+}
+
+.action-btn.primary {
+  background: var(--vt-c-green-soft);
+  border-color: var(--vt-c-green-dark);
+  color: var(--vt-c-green-darker);
+  font-weight: 600;
+}
+
+.action-btn.primary:hover {
+  background: var(--vt-c-green);
+  border-color: var(--vt-c-green-darker);
+}
+
+.action-btn .codicon {
+  font-size: 1rem;
 }
 
 .search-section {
@@ -1390,10 +1894,11 @@ onUnmounted(() => {
 .dates-row {
   display: flex;
   border-bottom: 1px solid var(--color-border);
-  height: 3rem;
-  align-items: stretch;
+  min-height: 3rem;
+  align-items: flex-start;
   overflow: visible;
   position: relative;
+  transition: height 0.2s ease;
 }
 
 .date-header {
@@ -1450,7 +1955,7 @@ onUnmounted(() => {
   background: var(--color-background-soft);
   border-bottom: 1px solid var(--color-border);
   border-right: 1px solid var(--color-border);
-  height: 3rem;
+  min-height: 3rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -1485,9 +1990,34 @@ onUnmounted(() => {
   max-width: 100px;
   padding: 0.25rem;
   border-right: 1px solid var(--color-border);
-  height: 3rem;
+  min-height: 3rem;
   overflow: visible;
   position: relative;
+}
+
+/* Quadrant drop zones */
+.quadrant-zone {
+  width: 25px;
+  min-width: 25px;
+  height: 100%;
+  position: absolute;
+  flex-shrink: 0;
+  z-index: 1;
+  pointer-events: all;
+}
+
+.quadrant-zone:nth-child(1) { left: 0; }
+.quadrant-zone:nth-child(2) { left: 25px; }
+.quadrant-zone:nth-child(3) { left: 50px; }
+.quadrant-zone:nth-child(4) { left: 75px; }
+
+.quadrant-zone.drop-target {
+  transition: background 0.05s;
+}
+
+.quadrant-zone.drop-target:hover {
+  background: var(--color-primary-light);
+  opacity: 0.25;
 }
 
 .date-cell.is-today {
@@ -1509,37 +2039,6 @@ onUnmounted(() => {
   z-index: -1;
 }
 
-.date-cell.drop-target {
-  position: relative;
-  transition: background 0.2s;
-}
-
-.date-cell.drop-target::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--color-primary-light);
-  opacity: 0.3;
-  pointer-events: none;
-  z-index: -1;
-  transition: opacity 0.2s;
-}
-
-.date-cell.drop-target:hover::before {
-  opacity: 0.5;
-}
-
-.date-cell.drop-target:hover {
-  outline: 2px dashed var(--color-primary);
-  outline-offset: -2px;
-}
-
-.empty-cell {
-  min-height: 2rem;
-}
 
 /* Calendar lock overlay */
 .calendar-lock-overlay {
@@ -1627,7 +2126,8 @@ onUnmounted(() => {
   transition: all 0.15s;
   border-left: 2px solid transparent;
   line-height: 1.2;
-  margin-bottom: 0.25rem;
+  pointer-events: all;
+  z-index: 10;
   position: relative;
 }
 
@@ -1686,10 +2186,23 @@ onUnmounted(() => {
   opacity: 0.7;
 }
 
+.task-block.dragging {
+  opacity: 0.25;
+  cursor: grabbing;
+  transition: opacity 0.05s;
+}
+
 .task-pending-move {
   opacity: 0.6;
   border-style: dashed;
   animation: pulse 1s ease-in-out infinite;
+}
+
+.task-drag-preview {
+  opacity: 0.7;
+  border: 2px dashed var(--color-primary) !important;
+  background: var(--color-primary-light) !important;
+  transition: all 0.05s ease-out;
 }
 
 .task-resize-preview {
@@ -1718,28 +2231,16 @@ onUnmounted(() => {
   }
 }
 
+
 .task-block.multi-day {
-  position: absolute;
-  top: 0.25rem;
-  left: 0.25rem;
-  z-index: 10;
-  min-height: 2.5rem;
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  pointer-events: all;
 }
 
 .task-block.multi-day:hover {
-  z-index: 20;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-.task-duration {
-  font-size: 0.6rem;
-  opacity: 0.7;
-  margin-top: 0.15rem;
-  font-style: italic;
-}
 
 .task-pending {
   background: var(--status-pending-bg);
@@ -1767,35 +2268,25 @@ onUnmounted(() => {
 }
 
 .task-content {
-  width: 100%;
-}
-
-.task-header {
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  margin-bottom: 0.15rem;
+  width: 100%;
+  overflow: hidden;
 }
 
 .task-icon {
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   flex-shrink: 0;
+  line-height: 1;
 }
 
 .task-staff {
-  font-weight: 600;
+  font-weight: 500;
   font-size: 0.7rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
-}
-
-.task-type {
-  font-size: 0.65rem;
-  text-transform: capitalize;
-  opacity: 0.85;
-  font-style: italic;
+  line-height: 1;
 }
 
 .empty-state {
@@ -1871,6 +2362,16 @@ onUnmounted(() => {
     gap: 0.75rem;
   }
 
+  .task-actions {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .action-btn {
+    flex: 1 1 auto;
+    min-width: fit-content;
+  }
+
   .search-section {
     justify-content: center;
   }
@@ -1891,5 +2392,170 @@ onUnmounted(() => {
 /* Dates section positioning */
 .dates-section {
   position: relative;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: var(--color-background);
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  color: var(--color-heading);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.modal-close:hover {
+  background: var(--color-background-soft);
+}
+
+.modal-close .codicon {
+  font-size: 1.25rem;
+}
+
+.modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: var(--color-heading);
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-size: 0.875rem;
+  transition: border-color 0.15s;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--vt-c-green);
+}
+
+.form-control:hover {
+  border-color: var(--color-border-hover);
+}
+
+.form-divider {
+  margin: 1.5rem 0;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.form-divider span {
+  font-size: 0.8rem;
+  color: var(--color-text);
+  opacity: 0.7;
+  font-style: italic;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.btn-primary,
+.btn-secondary {
+  padding: 0.625rem 1.25rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid;
+}
+
+.btn-primary {
+  background: var(--vt-c-green-soft);
+  border-color: var(--vt-c-green-dark);
+  color: var(--vt-c-green-darker);
+}
+
+.btn-primary:hover {
+  background: var(--vt-c-green);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: var(--color-background);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.btn-secondary:hover {
+  background: var(--color-background-soft);
+  border-color: var(--color-border-hover);
+}
+
+.required {
+  color: #f44336;
+  margin-left: 0.25rem;
 }
 </style>

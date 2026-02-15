@@ -1,8 +1,8 @@
 import { db } from "../db.js";
 
 export interface CreateTaskData {
-  roomId: string;
-  assignedStaffId: string;
+  roomId?: string;
+  staffId?: string;
   taskDate?: string;
   startDateTime?: string;
   endDateTime?: string;
@@ -55,7 +55,7 @@ export class TasksService {
     }
 
     if (status) where.status = status;
-    if (staffId) where.assignedStaffId = staffId;
+    if (staffId) where.staffId = staffId;
 
     return db.models.Task.findAll({
       where,
@@ -77,24 +77,24 @@ export class TasksService {
   }
 
   async create(data: CreateTaskData) {
-    // Validate roomId exists
-    const room = await db.models.Room.findByPk(data.roomId);
-    if (!room) {
-      throw new Error("Invalid room ID");
+    // Validate roomId if provided
+    if (data.roomId) {
+      const room = await db.models.Room.findByPk(data.roomId);
+      if (!room) {
+        throw new Error("Invalid room ID");
+      }
     }
 
-    // Validate assignedStaffId exists
-    const assignedStaff = await db.models.Staff.findByPk(data.assignedStaffId);
-    if (!assignedStaff) {
-      throw new Error("Invalid staff ID");
-    }
-
-    if (!data.taskDate && !data.startDateTime) {
-      throw new Error("Either taskDate or startDateTime is required");
+    // Validate staffId if provided
+    if (data.staffId) {
+      const assignedStaff = await db.models.Staff.findByPk(data.staffId);
+      if (!assignedStaff) {
+        throw new Error("Invalid staff ID");
+      }
     }
 
     // Process date/time fields
-    let finalTaskDate: string;
+    let finalTaskDate: string | null = null;
     let finalStartDateTime: Date | null = null;
     let finalEndDateTime: Date | null = null;
 
@@ -113,13 +113,12 @@ export class TasksService {
       finalTaskDate = data.taskDate;
       finalStartDateTime = new Date(`${data.taskDate}T12:00:00Z`);
       finalEndDateTime = new Date(`${data.taskDate}T23:59:59Z`);
-    } else {
-      throw new Error("Either taskDate or startDateTime/endDateTime is required");
     }
+    // If no dates provided, task will be created without dates (can be dragged onto calendar later)
 
     const task = await db.models.Task.create({
-      roomId: data.roomId,
-      assignedStaffId: data.assignedStaffId,
+      roomId: data.roomId || null,
+      staffId: data.staffId || null,
       taskDate: finalTaskDate,
       startDateTime: finalStartDateTime,
       endDateTime: finalEndDateTime,
@@ -151,9 +150,9 @@ export class TasksService {
       }
     }
 
-    // Validate assignedStaffId if provided
-    if (data.assignedStaffId) {
-      const assignedStaff = await db.models.Staff.findByPk(data.assignedStaffId);
+    // Validate staffId if provided
+    if (data.staffId) {
+      const assignedStaff = await db.models.Staff.findByPk(data.staffId);
       if (!assignedStaff) {
         throw new Error("Invalid staff ID");
       }
@@ -188,7 +187,7 @@ export class TasksService {
     }
 
     if (data.roomId) updates.roomId = data.roomId;
-    if (data.assignedStaffId) updates.assignedStaffId = data.assignedStaffId;
+    if (data.staffId) updates.staffId = data.staffId;
     if (data.taskType) updates.taskType = data.taskType;
     if (data.priority) updates.priority = data.priority;
     if (data.notes !== undefined) updates.notes = data.notes;

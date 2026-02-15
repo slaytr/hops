@@ -5,6 +5,7 @@ import { Guest } from './Guest.js';
 @Table({
   tableName: 'users',
   timestamps: true,
+  underscored: true,
 })
 export class User extends Model {
   @Column({
@@ -49,18 +50,11 @@ export class User extends Model {
   })
   declare lastLogin: Date | null;
 
-  @Column({
-    type: DataType.DATE,
-    allowNull: false,
-    field: 'created_at',
-  })
+  // Timestamps handled automatically by Sequelize
+  @Column({ type: DataType.DATE, field: 'created_at' })
   declare createdAt: Date;
 
-  @Column({
-    type: DataType.DATE,
-    allowNull: false,
-    field: 'updated_at',
-  })
+  @Column({ type: DataType.DATE, field: 'updated_at' })
   declare updatedAt: Date;
 
   // Associations
