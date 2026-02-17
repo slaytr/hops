@@ -39,18 +39,11 @@ export class Task extends Model {
   declare taskDate: Date | null;
 
   @Column({
-    type: DataType.DATE,
-    allowNull: true,
-    field: 'start_date_time',
+    type: DataType.INTEGER,
+    allowNull: false,
+    defaultValue: 1,
   })
-  declare startDateTime: Date | null;
-
-  @Column({
-    type: DataType.DATE,
-    allowNull: true,
-    field: 'end_date_time',
-  })
-  declare endDateTime: Date | null;
+  declare duration: number;
 
   @Column({
     type: DataType.ENUM('cleaning', 'maintenance', 'inspection', 'turndown'),

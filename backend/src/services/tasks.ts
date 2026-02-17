@@ -1,11 +1,11 @@
 import { db } from "../db.js";
+import { Op } from "sequelize";
 
 export interface CreateTaskData {
   roomId?: string;
   staffId?: string;
   taskDate?: string;
-  startDateTime?: string;
-  endDateTime?: string;
+  duration?: number;
   taskType?: string;
   priority?: string;
   status?: string;
@@ -34,9 +34,13 @@ export class TasksService {
     if (date) {
       where.taskDate = date;
     } else if (startDate && endDate) {
-      // For date range, fetch all and filter in application layer
+      // Task overlaps range if: taskDate <= rangeEnd AND taskDate + duration - 1 >= rangeStart
+      // We fetch tasks where taskDate is within an extended range, then filter precisely
       const tasks = await db.models.Task.findAll({
-        where: status ? { status } : {},
+        where: {
+          ...(status ? { status } : {}),
+          ...(staffId ? { staffId } : {}),
+        },
         include: [
           { model: db.models.Room, attributes: ['roomNumber'] },
           { model: db.models.Staff, as: 'assignedStaff', attributes: ['firstName', 'lastName'] }
@@ -45,8 +49,15 @@ export class TasksService {
       });
 
       return tasks.filter((t: any) => {
-        const taskStart = t.startDateTime || new Date(`${t.taskDate}T12:00:00`);
-        const taskEnd = t.endDateTime || new Date(`${t.taskDate}T23:59:59`);
+        const taskDate = t.taskDate;
+        if (!taskDate) return false;
+        const duration = t.duration || 1;
+
+        // Task occupies dates: [taskDate, taskDate + duration - 1]
+        const taskStart = new Date(`${taskDate}T00:00:00`);
+        const taskEnd = new Date(taskStart);
+        taskEnd.setDate(taskEnd.getDate() + duration - 1);
+
         const rangeStart = new Date(`${startDate}T00:00:00`);
         const rangeEnd = new Date(`${endDate}T23:59:59`);
 
@@ -93,35 +104,17 @@ export class TasksService {
       }
     }
 
-    // Process date/time fields
-    let finalTaskDate: string | null = null;
-    let finalStartDateTime: Date | null = null;
-    let finalEndDateTime: Date | null = null;
-
-    if (data.startDateTime || data.endDateTime) {
-      const start = data.startDateTime || data.endDateTime!;
-      const end = data.endDateTime || data.startDateTime!;
-
-      finalStartDateTime = new Date(start.includes('T') ? start : `${start}T12:00:00Z`);
-      finalEndDateTime = new Date(end.includes('T') ? end : `${end}T23:59:59Z`);
-      finalTaskDate = finalStartDateTime.toISOString().split('T')[0];
-
-      if (finalEndDateTime < finalStartDateTime) {
-        throw new Error("End date/time must be after start date/time");
-      }
-    } else if (data.taskDate) {
-      finalTaskDate = data.taskDate;
-      finalStartDateTime = new Date(`${data.taskDate}T12:00:00Z`);
-      finalEndDateTime = new Date(`${data.taskDate}T23:59:59Z`);
+    // Validate duration
+    const duration = data.duration ?? 1;
+    if (duration < 1) {
+      throw new Error("Duration must be at least 1 day");
     }
-    // If no dates provided, task will be created without dates (can be dragged onto calendar later)
 
     const task = await db.models.Task.create({
       roomId: data.roomId || null,
       staffId: data.staffId || null,
-      taskDate: finalTaskDate,
-      startDateTime: finalStartDateTime,
-      endDateTime: finalEndDateTime,
+      taskDate: data.taskDate || null,
+      duration,
       taskType: data.taskType || 'cleaning',
       priority: data.priority || 'medium',
       status: data.status || 'pending',
@@ -160,32 +153,13 @@ export class TasksService {
 
     const updates: any = {};
 
-    // Process date/time fields
-    if (data.startDateTime !== undefined || data.endDateTime !== undefined) {
-      const existingStart = task.startDateTime?.toISOString();
-      const existingEnd = task.endDateTime?.toISOString();
-
-      const newStart = data.startDateTime || existingStart;
-      const newEnd = data.endDateTime || existingEnd;
-
-      if (newStart && newEnd) {
-        const finalStart = new Date(newStart.includes('T') ? newStart : `${newStart}T12:00:00Z`);
-        const finalEnd = new Date(newEnd.includes('T') ? newEnd : `${newEnd}T12:00:00Z`);
-
-        if (finalEnd < finalStart) {
-          throw new Error("End date/time must be after start date/time");
-        }
-
-        updates.startDateTime = finalStart;
-        updates.endDateTime = finalEnd;
-        updates.taskDate = finalStart.toISOString().split('T')[0];
+    if (data.taskDate !== undefined) updates.taskDate = data.taskDate;
+    if (data.duration !== undefined) {
+      if (data.duration < 1) {
+        throw new Error("Duration must be at least 1 day");
       }
-    } else if (data.taskDate !== undefined) {
-      updates.taskDate = data.taskDate;
-      updates.startDateTime = new Date(`${data.taskDate}T12:00:00Z`);
-      updates.endDateTime = new Date(`${data.taskDate}T23:59:59Z`);
+      updates.duration = data.duration;
     }
-
     if (data.roomId) updates.roomId = data.roomId;
     if (data.staffId) updates.staffId = data.staffId;
     if (data.taskType) updates.taskType = data.taskType;

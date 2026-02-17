@@ -1,4 +1,8 @@
 {
+  "env": {
+    "MAX_THINKING_TOKENS": "10000",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50"
+  },
   "permissions": {
     "allow": [
       "Bash(npm install:*)",
@@ -60,7 +64,12 @@
       "Bash(docker-compose:*)",
       "Bash(start chrome http://localhost:5173)",
       "Bash(python3:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Skill(dev)",
+      "Bash(git -C \"C:\\\\Users\\\\Bill Li\\\\Documents\\\\Github\\\\hops\" log --all --oneline --grep=\"scroll\" --grep=\"drag\" --grep=\"drop\" -i -10)",
+      "Bash(git -C \"C:\\\\Users\\\\Bill Li\\\\Documents\\\\Github\\\\hops\" diff HEAD -- \"frontend/src/components/OperationsHub.vue\")",
+      "Bash(git log:*)"
     ]
-  }
+  },
+  "model": "sonnet"
 }
