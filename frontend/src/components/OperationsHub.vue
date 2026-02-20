@@ -28,7 +28,7 @@ interface HousekeepingTask {
   id: string
   roomId: string
   roomNumber?: string
-  assignedUserId: string
+  assignedUserId?: string
   assignedUserName?: string
   taskDate: string
   duration: number

@@ -6,6 +6,7 @@ const router = useRouter()
 const route = useRoute()
 
 // Computed properties for active states
+const isLoginPage = computed(() => route.path === '/login')
 const isOperationsHub = computed(() => route.path.startsWith('/ops-hub'))
 const isSettings = computed(() => route.path.startsWith('/settings'))
 const activeSettingsView = computed(() => {
@@ -120,7 +121,7 @@ onUnmounted(() => {
 
 <template>
   <div class="app">
-    <header>
+    <header v-if="!isLoginPage">
       <h1>hops</h1>
       <nav class="tabs">
         <router-link to="/ops-hub" :class="{ active: isOperationsHub }">
@@ -137,7 +138,7 @@ onUnmounted(() => {
     </header>
 
     <!-- Settings sub-navigation -->
-    <nav v-if="isSettings" class="settings-nav">
+    <nav v-if="isSettings && !isLoginPage" class="settings-nav">
       <router-link to="/settings/tasks" :class="{ active: activeSettingsView === 'tasks' }">
         Tasks
       </router-link>

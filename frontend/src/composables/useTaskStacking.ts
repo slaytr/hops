@@ -5,6 +5,8 @@ interface HousekeepingTask {
   roomId: string
   taskDate: string
   duration: number
+  taskType: string
+  status: string
 }
 
 export function useTaskStacking(
