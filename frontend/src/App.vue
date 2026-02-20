@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useAuth } from './composables/useAuth'
 
 const router = useRouter()
 const route = useRoute()
+const { currentUser, clearAuth } = useAuth()
+
+function logout() {
+  clearAuth()
+  router.push('/login')
+}
 
 // Computed properties for active states
 const isLoginPage = computed(() => route.path === '/login')
@@ -132,9 +139,18 @@ onUnmounted(() => {
         </router-link>
         <div class="tab-indicator" :style="tabIndicatorStyle"></div>
       </nav>
-      <button class="theme-toggle" @click="toggleTheme" :title="getThemeLabel()">
-        <i class="codicon" :class="getThemeIcon()"></i>
-      </button>
+      <div class="header-right">
+        <button class="theme-toggle" @click="toggleTheme" :title="getThemeLabel()">
+          <i class="codicon" :class="getThemeIcon()"></i>
+        </button>
+        <span v-if="currentUser" class="user-email">
+          <i class="codicon codicon-account"></i>
+          {{ currentUser.email }}
+        </span>
+        <button v-if="currentUser" class="btn-logout" @click="logout" title="Sign out">
+          <i class="codicon codicon-sign-out"></i>
+        </button>
+      </div>
     </header>
 
     <!-- Settings sub-navigation -->
@@ -186,8 +202,58 @@ header h1 {
   min-width: 80px;
 }
 
-.theme-toggle {
+.header-right {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.user-email {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--color-text-soft);
+  white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-email .codicon {
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.btn-logout {
+  padding: 0.5rem;
+  background: var(--color-background);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.btn-logout .codicon {
+  font-size: 1.1rem;
+}
+
+.btn-logout:hover {
+  background: var(--status-cancelled-bg);
+  border-color: var(--status-cancelled);
+  color: var(--status-cancelled);
+  transform: scale(1.05);
+}
+
+.theme-toggle {
   padding: 0.5rem;
   background: var(--color-background);
   color: var(--color-heading);
