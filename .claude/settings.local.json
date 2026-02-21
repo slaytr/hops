@@ -1,7 +1,7 @@
 {
   "env": {
     "MAX_THINKING_TOKENS": "10000",
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50"
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80"
   },
   "permissions": {
     "allow": [
@@ -68,7 +68,15 @@
       "Skill(dev)",
       "Bash(git -C \"C:\\\\Users\\\\Bill Li\\\\Documents\\\\Github\\\\hops\" log --all --oneline --grep=\"scroll\" --grep=\"drag\" --grep=\"drop\" -i -10)",
       "Bash(git -C \"C:\\\\Users\\\\Bill Li\\\\Documents\\\\Github\\\\hops\" diff HEAD -- \"frontend/src/components/OperationsHub.vue\")",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(git rm:*)",
+      "Bash(sort:*)",
+      "Bash(head:*)",
+      "Bash(mysql:*)",
+      "Bash(cd \"C:/Users/Bill Li/Documents/Github/hops/backend\" && npx tsc --noEmit 2>&1)",
+      "Bash(echo EXIT:$?:*)",
+      "Bash(echo BACKEND:$?:*)",
+      "Bash(echo FRONTEND:$?:*)"
     ]
   },
   "model": "sonnet"

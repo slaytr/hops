@@ -1,15 +1,17 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import OperationsHub from '../components/OperationsHub.vue'
-import HousekeepingTaskManager from '../components/HousekeepingTaskManager.vue'
-import RoomManager from '../components/RoomManager.vue'
-import RoomTypeManager from '../components/RoomTypeManager.vue'
-import UserManager from '../components/UserManager.vue'
-import LoginPage from '../components/LoginPage.vue'
+import OperationsHub from '../components/calendar/OperationsHub.vue'
+import HousekeepingTaskManager from '../components/settings/HousekeepingTaskManager.vue'
+import RoomManager from '../components/settings/RoomManager.vue'
+import RoomTypeManager from '../components/settings/RoomTypeManager.vue'
+import UserManager from '../components/settings/UserManager.vue'
+import LoginPage from '../components/auth/LoginPage.vue'
+import AccessDenied from '../components/auth/AccessDenied.vue'
 
 declare module 'vue-router' {
   interface RouteMeta {
     public?: boolean
     requiresAuth?: boolean
+    requiresPermission?: string
   }
 }
 
@@ -23,14 +25,20 @@ const router = createRouter({
       meta: { public: true }
     },
     {
+      path: '/access-denied',
+      name: 'access-denied',
+      component: AccessDenied,
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/',
-      redirect: '/ops-hub'
+      redirect: () => getDefaultRedirect()
     },
     {
       path: '/ops-hub',
       name: 'operations-hub',
       component: OperationsHub,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresPermission: 'ops_hub' }
     },
     {
       path: '/settings',
@@ -40,35 +48,57 @@ const router = createRouter({
       path: '/settings/tasks',
       name: 'settings-tasks',
       component: HousekeepingTaskManager,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresPermission: 'settings' }
     },
     {
       path: '/settings/rooms',
       name: 'settings-rooms',
       component: RoomManager,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresPermission: 'settings' }
     },
     {
       path: '/settings/room-types',
       name: 'settings-room-types',
       component: RoomTypeManager,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresPermission: 'settings' }
     },
     {
       path: '/settings/users',
       name: 'settings-users',
       component: UserManager,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresPermission: 'settings' }
+    },
+    {
+      path: '/:pathMatch(.*)*',
+      redirect: () => getDefaultRedirect()
     }
   ]
 })
 
 import { useAuth } from '../composables/useAuth'
+import type { AuthUser } from '../api/auth'
+
+function getDefaultRoute(user: AuthUser): string {
+  if (user.userType === 'admin') return '/ops-hub'
+  if (user.permissions.includes('ops_hub')) return '/ops-hub'
+  if (user.permissions.includes('settings')) return '/settings/tasks'
+  return '/access-denied'
+}
+
+function getDefaultRedirect(): string {
+  const { currentUser } = useAuth()
+  if (!currentUser.value) return '/login'
+  return getDefaultRoute(currentUser.value)
+}
+
+function hasPermission(user: AuthUser, permission: string): boolean {
+  if (user.userType === 'admin') return true
+  return user.permissions.includes(permission)
+}
 
 router.beforeEach(async (to) => {
-  const { isAuthenticated, restoreSession } = useAuth()
+  const { isAuthenticated, currentUser, restoreSession } = useAuth()
 
-  // If not yet authenticated but we have a stored token, try to restore
   if (!isAuthenticated.value) {
     await restoreSession()
   }
@@ -76,11 +106,22 @@ router.beforeEach(async (to) => {
   const isPublic = to.meta.public === true
 
   if (!isPublic && !isAuthenticated.value) {
-    return { name: 'login' }
+    return { name: 'login', query: { redirect: to.fullPath } }
   }
 
   if (to.name === 'login' && isAuthenticated.value) {
-    return { name: 'operations-hub' }
+    return getDefaultRoute(currentUser.value!)
+  }
+
+  // Permission check for authenticated routes
+  const requiredPermission = to.meta.requiresPermission
+  if (requiredPermission) {
+    if (!currentUser.value) {
+      return { name: 'login', query: { redirect: to.fullPath } }
+    }
+    if (!hasPermission(currentUser.value, requiredPermission)) {
+      return getDefaultRoute(currentUser.value)
+    }
   }
 })
 

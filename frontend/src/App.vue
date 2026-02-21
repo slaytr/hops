@@ -16,6 +16,18 @@ function logout() {
 const isLoginPage = computed(() => route.path === '/login')
 const isOperationsHub = computed(() => route.path.startsWith('/ops-hub'))
 const isSettings = computed(() => route.path.startsWith('/settings'))
+
+// Permission-aware nav visibility
+const canSeeOpsHub = computed(() => {
+  const u = currentUser.value
+  if (!u) return false
+  return u.userType === 'admin' || u.permissions.includes('ops_hub')
+})
+const canSeeSettings = computed(() => {
+  const u = currentUser.value
+  if (!u) return false
+  return u.userType === 'admin' || u.permissions.includes('settings')
+})
 const activeSettingsView = computed(() => {
   // Extract the view from the path (e.g., /settings/tasks -> tasks)
   const pathParts = route.path.split('/')
@@ -59,16 +71,16 @@ const handleKeyDown = (event: KeyboardEvent) => {
   switch (event.key) {
     case 'ArrowLeft':
       event.preventDefault()
-      setActiveTab('ops-hub')
+      if (canSeeOpsHub.value) setActiveTab('ops-hub')
       break
     case 'ArrowRight':
       event.preventDefault()
-      setActiveTab('settings')
+      if (canSeeSettings.value) setActiveTab('settings')
       break
     case 'Backspace':
       event.preventDefault()
-      // Toggle between tabs
-      setActiveTab(isOperationsHub.value ? 'settings' : 'ops-hub')
+      if (isOperationsHub.value && canSeeSettings.value) setActiveTab('settings')
+      else if (isSettings.value && canSeeOpsHub.value) setActiveTab('ops-hub')
       break
   }
 }
@@ -131,24 +143,24 @@ onUnmounted(() => {
     <header v-if="!isLoginPage">
       <h1>hops</h1>
       <nav class="tabs">
-        <router-link to="/ops-hub" :class="{ active: isOperationsHub }">
+        <router-link v-if="canSeeOpsHub" to="/ops-hub" :class="{ active: isOperationsHub }">
           <i class="codicon codicon-calendar"></i> Operations Hub
         </router-link>
-        <router-link to="/settings/tasks" :class="{ active: isSettings }">
+        <router-link v-if="canSeeSettings" to="/settings/tasks" :class="{ active: isSettings }">
           <i class="codicon codicon-settings-gear"></i> Settings
         </router-link>
         <div class="tab-indicator" :style="tabIndicatorStyle"></div>
       </nav>
       <div class="header-right">
-        <button class="theme-toggle" @click="toggleTheme" :title="getThemeLabel()">
-          <i class="codicon" :class="getThemeIcon()"></i>
-        </button>
         <span v-if="currentUser" class="user-email">
           <i class="codicon codicon-account"></i>
           {{ currentUser.email }}
         </span>
         <button v-if="currentUser" class="btn-logout" @click="logout" title="Sign out">
           <i class="codicon codicon-sign-out"></i>
+        </button>
+        <button class="theme-toggle" @click="toggleTheme" :title="getThemeLabel()">
+          <i class="codicon" :class="getThemeIcon()"></i>
         </button>
       </div>
     </header>

@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, nextTick, defineAsyncComponent } from 'vue'
-import { useOpsHubSettings } from '../composables/useOpsHubSettings'
-import { useTaskCalculations } from '../composables/useTaskCalculations'
-import { useTaskStacking } from '../composables/useTaskStacking'
-import { useTaskResize } from '../composables/useTaskResize'
-import { useDragAndDrop } from '../composables/useDragAndDrop'
-import { fetchRooms as apiFetchRooms } from '../api/rooms'
-import { fetchTasks as apiFetchTasks, updateTask, createTask as apiCreateTask } from '../api/tasks'
-import { fetchStaff as apiFetchStaff } from '../api/staff'
-import { formatDateDisplay, getDayName, getMonthAbbr, isToday, isWeekend } from '../utils/dateFormatters'
+import { useOpsHubSettings } from '../../composables/useOpsHubSettings'
+import { useTaskCalculations } from '../../composables/useTaskCalculations'
+import { useTaskStacking } from '../../composables/useTaskStacking'
+import { useTaskResize } from '../../composables/useTaskResize'
+import { useDragAndDrop } from '../../composables/useDragAndDrop'
+import { fetchRooms as apiFetchRooms } from '../../api/rooms'
+import { fetchTasks as apiFetchTasks, updateTask, createTask as apiCreateTask } from '../../api/tasks'
+import { fetchStaff as apiFetchStaff } from '../../api/staff'
+import { formatDateDisplay, getDayName, getMonthAbbr, isToday, isWeekend } from '../../utils/dateFormatters'
+import type { HousekeepingTask, Room, Staff } from '../../types'
 import TaskBlock from './TaskBlock.vue'
 import TaskPreview from './TaskPreview.vue'
 import MoveConfirmButtons from './MoveConfirmButtons.vue'
@@ -23,41 +24,6 @@ import DateHeader from './DateHeader.vue'
 const AddTaskModal = defineAsyncComponent(() => import('./AddTaskModal.vue'))
 
 const { roomSortBy } = useOpsHubSettings()
-
-interface HousekeepingTask {
-  id: string
-  roomId: string
-  roomNumber?: string
-  assignedUserId?: string
-  assignedUserName?: string
-  taskDate: string
-  duration: number
-  taskType: 'cleaning' | 'maintenance' | 'inspection' | 'turndown'
-  priority: 'low' | 'medium' | 'high' | 'urgent'
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
-  notes?: string
-  startedAt?: string
-  completedAt?: string
-}
-
-interface Room {
-  id: string
-  roomNumber: string
-  roomTypeId: string
-  roomType?: {
-    name: string
-  }
-  floor?: number
-  status: string
-}
-
-interface Staff {
-  id: string
-  firstName: string
-  lastName: string
-  role: string
-  status: string
-}
 
 const rooms = ref<Room[]>([])
 const tasks = ref<HousekeepingTask[]>([])

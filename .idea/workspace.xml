@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="8e87a348-cb6f-435f-98ae-e128efa18822" name="Changes" comment="out of tokens - session 6">
+      <change beforePath="$PROJECT_DIR$/.claude/settings.local.json" beforeDir="false" afterPath="$PROJECT_DIR$/.claude/settings.local.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.env.example" beforeDir="false" afterPath="$PROJECT_DIR$/.env.example" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/experiments.iml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/test_package.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/ts_commonjs_default_export.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/API_ENDPOINTS_SUMMARY.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/BACKEND_SEQUELIZE_MIGRATION.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/CLAUDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/CLAUDE.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/DESIGN.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/DEVELOPMENT.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/DOCKER.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/IMPLEMENTATION_SUMMARY.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/MODEL_LIBRARY_SUMMARY.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SCHEMA_REFACTORING_SUMMARY.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/.env" beforeDir="false" afterPath="$PROJECT_DIR$/backend/.env" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/backend/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/backend/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/routes/auth.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/routes/auth.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/routes/users.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/routes/users.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/services/users.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/services/users.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/App.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/api/auth.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/api/auth.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/api/rooms.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/api/rooms.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/api/staff.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/api/staff.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/api/tasks.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/api/tasks.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/AddTaskModal.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/CalendarControls.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/CalendarHeader.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/CalendarLegend.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/DateHeader.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/HelloWorld.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/HousekeepingTaskManager.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/LoginPage.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/MoveConfirmButtons.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/OperationsHub.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/RoomColumn.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/RoomManager.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/RoomTypeManager.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/TaskActions.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/TaskBlock.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/TaskPreview.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/TheWelcome.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/UserManager.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/WelcomeItem.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/icons/IconCommunity.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/icons/IconDocumentation.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/icons/IconEcosystem.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/icons/IconSupport.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/icons/IconTooling.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/composables/useDragAndDrop.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/composables/useDragAndDrop.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/composables/useTaskCalculations.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/composables/useTaskCalculations.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/composables/useTaskResize.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/composables/useTaskResize.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/composables/useTaskStacking.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/composables/useTaskStacking.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/router/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/router/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/model/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/model/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/model/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/model/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/model/src/models/Staff.ts" beforeDir="false" afterPath="$PROJECT_DIR$/model/src/models/Staff.ts" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 0
+}</component>
+  <component name="ProjectId" id="39446Lym058o37991L43knciI8U" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/Bill Li/Documents/Github/hops&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;terminal&quot;,
+    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;C:\\Program Files\\JetBrains\\IntelliJ IDEA 2025.2.2\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="RunManager">
+    <configuration default="true" type="JetRunConfigurationType">
+      <module name="hops" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="KotlinStandaloneScriptRunConfigurationType">
+      <module name="hops" />
+      <option name="filePath" />
+      <method v="2" />
+    </configuration>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-9823dce3aa75-bf35d07a577b-intellij.indexing.shared.core-IU-252.26199.169" />
+        <option value="bundled-js-predefined-d6986cc7102b-9c94529fcfe0-JavaScript-IU-252.26199.169" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="8e87a348-cb6f-435f-98ae-e128efa18822" name="Changes" comment="" />
+      <created>1769941832813</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1769941832813</updated>
+      <workItem from="1769941834455" duration="3079000" />
+      <workItem from="1769987778071" duration="957000" />
+      <workItem from="1770972485006" duration="16000" />
+      <workItem from="1770984236099" duration="926000" />
+      <workItem from="1771038148119" duration="4306000" />
+      <workItem from="1771053719675" duration="2535000" />
+      <workItem from="1771062872921" duration="2064000" />
+      <workItem from="1771121758589" duration="822000" />
+      <workItem from="1771150220950" duration="4122000" />
+      <workItem from="1771189852882" duration="594000" />
+      <workItem from="1771221108485" duration="5417000" />
+      <workItem from="1771322600840" duration="298000" />
+      <workItem from="1771669573400" duration="4664000" />
+      <workItem from="1771676381122" duration="74000" />
+      <workItem from="1771676465192" duration="24000" />
+      <workItem from="1771676497119" duration="71000" />
+      <workItem from="1771676633409" duration="86000" />
+      <workItem from="1771676732787" duration="20000" />
+      <workItem from="1771676763696" duration="50000" />
+    </task>
+    <task id="LOCAL-00001" summary="out of tokens - session 1">
+      <option name="closed" value="true" />
+      <created>1770985032825</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1770985032825</updated>
+    </task>
+    <task id="LOCAL-00002" summary="out of tokens - session 3">
+      <option name="closed" value="true" />
+      <created>1771042435085</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1771042435085</updated>
+    </task>
+    <task id="LOCAL-00003" summary="out of tokens - session 4">
+      <option name="closed" value="true" />
+      <created>1771065563408</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1771065563408</updated>
+    </task>
+    <task id="LOCAL-00004" summary="out of tokens - session 5">
+      <option name="closed" value="true" />
+      <created>1771123669306</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1771123669306</updated>
+    </task>
+    <task id="LOCAL-00005" summary="out of tokens - session 6">
+      <option name="closed" value="true" />
+      <created>1771322678497</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1771322678497</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+    <option name="exactExcludedFiles">
+      <list>
+        <option value="$PROJECT_DIR$/frontend/vite.config.js" />
+        <option value="$PROJECT_DIR$/frontend/vite.config.js" />
+      </list>
+    </option>
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="out of tokens - session 1" />
+    <MESSAGE value="out of tokens - session 3" />
+    <MESSAGE value="out of tokens - session 4" />
+    <MESSAGE value="out of tokens - session 5" />
+    <MESSAGE value="out of tokens - session 6" />
+    <option name="LAST_COMMIT_MESSAGE" value="out of tokens - session 6" />
+  </component>
+</project>

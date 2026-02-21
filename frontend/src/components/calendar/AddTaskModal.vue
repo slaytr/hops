@@ -1,24 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-
-interface Room {
-  id: string
-  roomNumber: string
-  roomTypeId: string
-  roomType?: {
-    name: string
-  }
-  floor?: number
-  status: string
-}
-
-interface Staff {
-  id: string
-  firstName: string
-  lastName: string
-  role: string
-  status: string
-}
+import type { Room, Staff } from '../../types'
 
 interface NewTaskData {
   taskType: 'cleaning' | 'maintenance' | 'inspection' | 'turndown'

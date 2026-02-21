@@ -1,12 +1,5 @@
 <script setup lang="ts">
-interface Room {
-  id: string
-  roomNumber: string
-  roomType?: {
-    name: string
-  }
-  floor?: number
-}
+import type { Room } from '../../types'
 
 interface Props {
   rooms: Room[]

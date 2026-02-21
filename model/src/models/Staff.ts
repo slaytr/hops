@@ -84,6 +84,13 @@ export class Staff extends Model {
   })
   declare notes: string | null;
 
+  @Column({
+    type: DataType.JSON,
+    allowNull: true,
+    defaultValue: null,
+  })
+  declare permissions: string[] | null;
+
   // Timestamps handled automatically by Sequelize
   @Column({ type: DataType.DATE, field: 'created_at' })
   declare createdAt: Date;

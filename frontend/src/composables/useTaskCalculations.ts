@@ -1,14 +1,5 @@
 import { computed, type Ref } from 'vue'
-
-interface HousekeepingTask {
-  id: string
-  roomId: string
-  taskDate: string
-  duration: number
-  taskType: string
-  status: string
-  assignedUserName?: string
-}
+import type { HousekeepingTask } from '../types'
 
 export function useTaskCalculations(tasks: Ref<HousekeepingTask[]>) {
   const DATE_COLUMN_WIDTH = 100

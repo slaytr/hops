@@ -22,8 +22,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `docker-compose down` - Stop all services
 - `docker-compose up -d --build [service]` - Rebuild and restart a service
 
-See [DEVELOPMENT.md](./DEVELOPMENT.md) for detailed development workflow
-See [DOCKER.md](./DOCKER.md) for complete Docker documentation
+See [DEVELOPMENT.md](./docs/DEVELOPMENT.md) for detailed development workflow
+See [DOCKER.md](./docs/DOCKER.md) for complete Docker documentation
 
 ## Architecture
 
@@ -61,6 +61,8 @@ Entry point: `src/server.ts`
    ```
 
 ## Design Guide
+
+See [DESIGN.md](./docs/DESIGN.md) for the full design system — color tokens, typography, spacing, component specs, and protected components.
 
 ### Icons
 - **Prioritize Codicons**: Use icons from the Codicon library (https://microsoft.github.io/vscode-codicons/dist/codicon.html)

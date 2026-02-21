@@ -35,6 +35,14 @@ services:
       MYSQL_USER: ${MYSQL_USER:-hops_user}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-hops_password}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-hops_db}
+      JWT_SECRET: ${JWT_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      FACEBOOK_CLIENT_ID: ${FACEBOOK_CLIENT_ID}
+      FACEBOOK_CLIENT_SECRET: ${FACEBOOK_CLIENT_SECRET}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:3000/auth/google/callback}
+      FACEBOOK_CALLBACK_URL: ${FACEBOOK_CALLBACK_URL:-http://localhost:3000/auth/facebook/callback}
     depends_on:
       mysql:
         condition: service_healthy

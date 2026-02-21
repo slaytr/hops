@@ -1,11 +1,6 @@
 <script setup lang="ts">
-interface HousekeepingTask {
-  id: string
-  roomId: string
-  assignedUserName?: string
-  taskType: 'cleaning' | 'maintenance' | 'inspection' | 'turndown'
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
-}
+import type { HousekeepingTask } from '../../types'
+import { getTaskTypeIcon, getTaskStatusClass } from '../../utils/taskHelpers'
 
 type PreviewType = 'drag' | 'move' | 'resize'
 
@@ -17,26 +12,6 @@ interface Props {
 }
 
 const props = defineProps<Props>()
-
-const getTaskTypeIcon = (type: string): string => {
-  const icons: Record<string, string> = {
-    cleaning: '🧹',
-    maintenance: '🔧',
-    inspection: '🔍',
-    turndown: '🛏️'
-  }
-  return icons[type] || '📋'
-}
-
-const getStatusClass = (status: string): string => {
-  const classes: Record<string, string> = {
-    pending: 'task-pending',
-    in_progress: 'task-in-progress',
-    completed: 'task-completed',
-    cancelled: 'task-cancelled'
-  }
-  return classes[status] || ''
-}
 
 const getPreviewClass = (): string => {
   const classes: Record<PreviewType, string> = {
@@ -51,7 +26,7 @@ const getPreviewClass = (): string => {
 <template>
   <div
     class="task-block"
-    :class="[getPreviewClass(), getStatusClass(task.status)]"
+    :class="[getPreviewClass(), getTaskStatusClass(task.status)]"
     :style="style"
     :title="title"
   >

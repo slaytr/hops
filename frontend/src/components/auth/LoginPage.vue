@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { apiLogin, apiRegister, apiGetMe, getGoogleLoginUrl, getFacebookLoginUrl } from '../api/auth'
-import { useAuth } from '../composables/useAuth'
+import { apiLogin, apiRegister, apiGetMe, getGoogleLoginUrl, getFacebookLoginUrl } from '../../api/auth'
+import { useAuth } from '../../composables/useAuth'
 
 const router = useRouter()
 const route = useRoute()
@@ -36,7 +36,8 @@ async function handleSubmit() {
       result = await apiRegister(email.value, password.value)
     }
     setAuth(result.token, result.user)
-    router.push('/ops-hub')
+    const redirect = route.query.redirect
+    router.push(typeof redirect === 'string' && redirect ? redirect : '/ops-hub')
   } catch (err: unknown) {
     errorMsg.value = err instanceof Error ? err.message : 'An error occurred.'
   } finally {
@@ -45,11 +46,15 @@ async function handleSubmit() {
 }
 
 onMounted(async () => {
-  const tokenParam = route.query.token
-  if (typeof tokenParam === 'string' && tokenParam) {
+  // OAuth callback passes token in URL fragment (#token=...) to keep it out of server logs
+  const hash = window.location.hash
+  const hashToken = hash.startsWith('#token=') ? hash.slice(7) : null
+  if (hashToken) {
+    // Clear the fragment immediately so it doesn't persist in history
+    history.replaceState(null, '', window.location.pathname + window.location.search)
     try {
-      const { user } = await apiGetMe(tokenParam)
-      setAuth(tokenParam, user)
+      const { user } = await apiGetMe(hashToken)
+      setAuth(hashToken, user)
       router.push('/ops-hub')
     } catch {
       // token is invalid, stay on login page

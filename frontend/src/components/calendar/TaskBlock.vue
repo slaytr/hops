@@ -1,19 +1,6 @@
 <script setup lang="ts">
-interface HousekeepingTask {
-  id: string
-  roomId: string
-  roomNumber?: string
-  assignedUserId?: string
-  assignedUserName?: string
-  taskDate: string
-  duration: number
-  taskType: 'cleaning' | 'maintenance' | 'inspection' | 'turndown'
-  priority: 'low' | 'medium' | 'high' | 'urgent'
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
-  notes?: string
-  startedAt?: string
-  completedAt?: string
-}
+import type { HousekeepingTask } from '../../types'
+import { getTaskTypeIcon, getTaskStatusClass } from '../../utils/taskHelpers'
 
 interface Props {
   task: HousekeepingTask
@@ -31,26 +18,6 @@ interface Emits {
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
-
-const getStatusClass = (status: string): string => {
-  const classes: Record<string, string> = {
-    pending: 'task-pending',
-    in_progress: 'task-in-progress',
-    completed: 'task-completed',
-    cancelled: 'task-cancelled'
-  }
-  return classes[status] || ''
-}
-
-const getTaskTypeIcon = (type: string): string => {
-  const icons: Record<string, string> = {
-    cleaning: '🧹',
-    maintenance: '🔧',
-    inspection: '🔍',
-    turndown: '🛏️'
-  }
-  return icons[type] || '📋'
-}
 
 const handleResizeStart = (event: MouseEvent, edge: 'start' | 'end') => {
   emit('resize-start', event, edge)
@@ -75,7 +42,7 @@ const handleMouseLeave = (event: MouseEvent) => {
   <div
     class="task-block"
     :class="[
-      getStatusClass(task.status),
+      getTaskStatusClass(task.status),
       {
         'multi-day': isMultiDay,
         'resizing': isResizing,

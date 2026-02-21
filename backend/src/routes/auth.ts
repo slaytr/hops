@@ -3,6 +3,7 @@ import oauthPlugin from '@fastify/oauth2';
 import type { OAuth2Namespace } from '@fastify/oauth2';
 import cookie from '@fastify/cookie';
 import { authService } from '../services/auth.js';
+import { db } from '../db.js';
 
 // Access OAuth2 provider configurations at runtime
 const { GOOGLE_CONFIGURATION, FACEBOOK_CONFIGURATION } = oauthPlugin as any;
@@ -15,9 +16,23 @@ declare module 'fastify' {
   }
 }
 
-interface JwtPayload {
+export interface JwtPayload {
   id: number;
   email: string;
+  userType: string;
+  permissions: string[];
+}
+
+async function buildPayload(user: any): Promise<JwtPayload> {
+  const userType = user.get('userType') as string;
+  let permissions: string[] = [];
+
+  if (userType === 'staff') {
+    const staff = await db.models.Staff.findOne({ where: { userId: user.get('id') } });
+    permissions = (staff?.get('permissions') as string[] | null) ?? ['ops_hub'];
+  }
+
+  return { id: user.get('id') as number, email: user.get('email') as string, userType, permissions };
 }
 
 function sanitizeUser(user: any) {
@@ -68,19 +83,19 @@ export default async function authRoutes(fastify: FastifyInstance) {
     });
   }
 
-  // POST /auth/register
+  // POST /auth/register — public endpoint, always creates a guest account
   fastify.post<{
-    Body: { email: string; password: string; userType?: 'staff' | 'guest' | 'admin' };
+    Body: { email: string; password: string };
   }>('/auth/register', async (request, reply) => {
-    const { email, password, userType } = request.body;
+    const { email, password } = request.body;
 
     if (!email || !password) {
       return reply.status(400).send({ error: 'Email and password are required' });
     }
 
     try {
-      const user = await authService.register(email, password, userType);
-      const payload: JwtPayload = { id: user.get('id') as number, email: user.get('email') as string };
+      const user = await authService.register(email, password, 'guest');
+      const payload = await buildPayload(user);
       const token = fastify.jwt.sign(payload, { expiresIn: '7d' });
       return { token, user: sanitizeUser(user) };
     } catch (error: any) {
@@ -106,7 +121,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       return reply.status(401).send({ error: 'Invalid email or password' });
     }
 
-    const payload: JwtPayload = { id: user.get('id') as number, email: user.get('email') as string };
+    const payload = await buildPayload(user);
     const token = fastify.jwt.sign(payload, { expiresIn: '7d' });
     return { token, user: sanitizeUser(user) };
   });
@@ -126,7 +141,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
       if (!user) {
         return reply.status(401).send({ error: 'User not found' });
       }
-      return { user: sanitizeUser(user) };
+      const payload = await buildPayload(user);
+      return { user: { ...sanitizeUser(user), permissions: payload.permissions } };
     } catch {
       return reply.status(401).send({ error: 'Unauthorized' });
     }
@@ -145,11 +161,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
         const profile = (await profileRes.json()) as { id: string; email: string };
 
         const { user } = await authService.findOrCreateOAuthUser('google', profile.id, profile.email);
-        const payload: JwtPayload = { id: user.get('id') as number, email: user.get('email') as string };
+        const payload = await buildPayload(user);
         const token = fastify.jwt.sign(payload, { expiresIn: '7d' });
 
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-        return reply.redirect(`${frontendUrl}/login?token=${token}`);
+        return reply.redirect(`${frontendUrl}/login#token=${token}`);
       } catch (error) {
         fastify.log.error(error);
         return reply.status(500).send({ error: 'OAuth authentication failed' });
@@ -170,11 +186,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
         const profile = (await profileRes.json()) as { id: string; email: string };
 
         const { user } = await authService.findOrCreateOAuthUser('facebook', profile.id, profile.email);
-        const payload: JwtPayload = { id: user.get('id') as number, email: user.get('email') as string };
+        const payload = await buildPayload(user);
         const token = fastify.jwt.sign(payload, { expiresIn: '7d' });
 
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-        return reply.redirect(`${frontendUrl}/login?token=${token}`);
+        return reply.redirect(`${frontendUrl}/login#token=${token}`);
       } catch (error) {
         fastify.log.error(error);
         return reply.status(500).send({ error: 'OAuth authentication failed' });

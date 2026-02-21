@@ -1,13 +1,5 @@
 import { computed, type Ref } from 'vue'
-
-interface HousekeepingTask {
-  id: string
-  roomId: string
-  taskDate: string
-  duration: number
-  taskType: string
-  status: string
-}
+import type { HousekeepingTask } from '../types'
 
 export function useTaskStacking(
   tasks: Ref<HousekeepingTask[]>,

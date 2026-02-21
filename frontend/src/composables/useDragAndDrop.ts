@@ -1,14 +1,5 @@
 import { ref } from 'vue'
-
-interface HousekeepingTask {
-  id: string
-  roomId: string
-  taskDate: string
-  duration: number
-  taskType: 'cleaning' | 'maintenance' | 'inspection' | 'turndown'
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
-  assignedUserName?: string
-}
+import type { HousekeepingTask } from '../types'
 
 interface DragPreview {
   task: HousekeepingTask
