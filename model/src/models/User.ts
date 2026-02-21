@@ -30,6 +30,22 @@ export class User extends Model {
   declare passwordHash: string | null;
 
   @Column({
+    type: DataType.STRING(255),
+    allowNull: true,
+    unique: true,
+    field: 'google_id',
+  })
+  declare googleId: string | null;
+
+  @Column({
+    type: DataType.STRING(255),
+    allowNull: true,
+    unique: true,
+    field: 'facebook_id',
+  })
+  declare facebookId: string | null;
+
+  @Column({
     type: DataType.ENUM('staff', 'guest', 'admin'),
     allowNull: false,
     field: 'user_type',

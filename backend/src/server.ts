@@ -1,6 +1,7 @@
 import "dotenv/config";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import jwt from "@fastify/jwt";
 import { testConnection } from "./db.js";
 import { registerRoutes } from "./routes/index.js";
 
@@ -13,6 +14,10 @@ await fastify.register(cors, {
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
+});
+
+await fastify.register(jwt, {
+  secret: process.env.JWT_SECRET || 'hops-dev-secret-change-in-production',
 });
 
 // Health check endpoint

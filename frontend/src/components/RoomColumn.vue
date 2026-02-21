@@ -10,7 +10,7 @@ interface Room {
 
 interface Props {
   rooms: Room[]
-  currentYear: string
+  currentYear: number | string
   getRowHeight: (roomId: string) => string
 }
 

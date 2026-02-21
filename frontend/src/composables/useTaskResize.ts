@@ -5,8 +5,9 @@ interface HousekeepingTask {
   roomId: string
   taskDate: string
   duration: number
-  taskType: string
-  status: string
+  taskType: 'cleaning' | 'maintenance' | 'inspection' | 'turndown'
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
+  assignedUserName?: string
 }
 
 interface ResizePreview {

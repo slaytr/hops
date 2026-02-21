@@ -1,4 +1,5 @@
 import { FastifyInstance } from "fastify";
+import authRoutes from "./auth.js";
 import usersRoutes from "./users.js";
 import staffRoutes from "./staff.js";
 import roomTypesRoutes from "./room-types.js";
@@ -12,6 +13,7 @@ import roomOccupanciesRoutes from "./room-occupancies.js";
 import seedRoutes from "./seed.js";
 
 export async function registerRoutes(fastify: FastifyInstance) {
+  await fastify.register(authRoutes);
   await fastify.register(usersRoutes);
   await fastify.register(staffRoutes);
   await fastify.register(roomTypesRoutes);
